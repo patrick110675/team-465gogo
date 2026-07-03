@@ -3,7 +3,7 @@
   "short_name": "AMR特攻隊",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#06111f",
+  "background_color": "#07111f",
   "theme_color": "#07111f",
   "icons": []
 }

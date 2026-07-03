@@ -27,13 +27,9 @@ export function listenRecords(callback, onError) {
     callback(rows);
   }, onError);
 }
-
 export function listenConfig(callback, onError) {
-  return onSnapshot(doc(db, "platform", "settings"), snap => {
-    callback(snap.exists() ? snap.data() : null);
-  }, onError);
+  return onSnapshot(doc(db, "platform", "settings"), snap => callback(snap.exists()?snap.data():null), onError);
 }
-
 export const saveConfig = data => setDoc(doc(db, "platform", "settings"), data);
 export const saveRecord = (id,data) => setDoc(doc(db, "team_scores", id), data);
 export const removeRecord = id => deleteDoc(doc(db, "team_scores", id));

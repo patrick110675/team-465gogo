@@ -1,25 +1,15 @@
 export const DEFAULT_CONFIG = {
   "activity": {
     "title": "AMR 人力特攻隊",
-    "subtitle": "團結・合作・突破・共創榮耀",
-    "endDate": "2025-07-31",
-    "currentEvent": "7月增員競賽"
+    "subtitle": "團隊競賽管理平台",
+    "periodName": "本期競賽",
+    "endDate": "2026-07-31"
   },
-  "events": [
-    {
-      "id": "event-main",
-      "name": "7月增員競賽",
-      "date": "2025-07-31",
-      "points": 1,
-      "active": true
-    }
-  ],
   "teams": [
     {
       "id": "wolves",
       "icon": "🐺",
       "name": "五狼攏來隊",
-      "color": "#f97316",
       "members": [
         "天景",
         "小怡君",
@@ -28,10 +18,9 @@ export const DEFAULT_CONFIG = {
       ]
     },
     {
-      "id": "han-first",
+      "id": "han",
       "icon": "🐼",
       "name": "瀚瀚瀚瀚得第一",
-      "color": "#ef4444",
       "members": [
         "子瀚",
         "靜萱",
@@ -40,22 +29,9 @@ export const DEFAULT_CONFIG = {
       ]
     },
     {
-      "id": "sun",
-      "icon": "☀️",
-      "name": "陽光委任隊",
-      "color": "#eab308",
-      "members": [
-        "怡蒨",
-        "楚涵",
-        "永濂",
-        "瑀芯"
-      ]
-    },
-    {
-      "id": "win-start",
+      "id": "win",
       "icon": "🚀",
       "name": "盈在起跑點",
-      "color": "#2563eb",
       "members": [
         "可盈",
         "恩慈",
@@ -65,10 +41,20 @@ export const DEFAULT_CONFIG = {
       ]
     },
     {
+      "id": "sun",
+      "icon": "☀️",
+      "name": "陽光委任隊",
+      "members": [
+        "怡蒨",
+        "楚涵",
+        "永濂",
+        "瑀芯"
+      ]
+    },
+    {
       "id": "come",
       "icon": "🎯",
       "name": "你來就隊",
-      "color": "#16a34a",
       "members": [
         "巧云",
         "乙榛",
@@ -142,7 +128,7 @@ export const DEFAULT_CONFIG = {
     },
     {
       "key": "warm_cop",
-      "label": "緣故約訪 COP / 軟性活動",
+      "label": "緣故約訪 / COP / 軟性活動",
       "unit": "次",
       "points": 1
     },
@@ -170,5 +156,6 @@ export const DEFAULT_CONFIG = {
       "unit": "位",
       "points": 8
     }
-  ]
+  ],
+  "events": []
 };
