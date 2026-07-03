@@ -1,35 +1,20 @@
 export const DEFAULT_CONFIG = {
   "activity": {
     "title": "AMR 人力特攻隊",
-    "subtitle": "競賽 × 增員 × 團隊戰況",
-    "endDate": "2026-07-31"
+    "subtitle": "團結・合作・突破・共創榮耀",
+    "endDate": "2025-07-31",
+    "currentEvent": "7月增員競賽"
   },
+  "events": [
+    {
+      "id": "event-main",
+      "name": "7月增員競賽",
+      "date": "2025-07-31",
+      "points": 1,
+      "active": true
+    }
+  ],
   "teams": [
-    {
-      "id": "han-first",
-      "icon": "🐼",
-      "name": "瀚瀚瀚瀚得第一",
-      "color": "#ef4444",
-      "members": [
-        "子瀚",
-        "靜萱",
-        "陳怡君",
-        "雅韻"
-      ]
-    },
-    {
-      "id": "win-start",
-      "icon": "🚀",
-      "name": "盈在起跑點",
-      "color": "#2563eb",
-      "members": [
-        "可盈",
-        "恩慈",
-        "士誼",
-        "奎璿",
-        "美如"
-      ]
-    },
     {
       "id": "wolves",
       "icon": "🐺",
@@ -43,6 +28,18 @@ export const DEFAULT_CONFIG = {
       ]
     },
     {
+      "id": "han-first",
+      "icon": "🐼",
+      "name": "瀚瀚瀚瀚得第一",
+      "color": "#ef4444",
+      "members": [
+        "子瀚",
+        "靜萱",
+        "陳怡君",
+        "雅韻"
+      ]
+    },
+    {
       "id": "sun",
       "icon": "☀️",
       "name": "陽光委任隊",
@@ -52,6 +49,19 @@ export const DEFAULT_CONFIG = {
         "楚涵",
         "永濂",
         "瑀芯"
+      ]
+    },
+    {
+      "id": "win-start",
+      "icon": "🚀",
+      "name": "盈在起跑點",
+      "color": "#2563eb",
+      "members": [
+        "可盈",
+        "恩慈",
+        "士誼",
+        "奎璿",
+        "美如"
       ]
     },
     {
@@ -118,6 +128,12 @@ export const DEFAULT_CONFIG = {
     }
   ],
   "personalRules": [
+    {
+      "key": "checkin",
+      "label": "活動簽到",
+      "unit": "次",
+      "points": 1
+    },
     {
       "key": "net_contact",
       "label": "網增接觸 / 新增名單 / 約訪",

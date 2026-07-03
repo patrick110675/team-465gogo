@@ -1,16 +1,17 @@
-# AMR 人力特攻隊
+# AMR 人力特攻隊 專業儀表板版
 
-含管理中心版本。
+功能：
+- 深色專業 Dashboard
+- 首頁冠軍 / MVP / 排行榜 / 最新紀錄
+- 新增積分
+- 團隊排行
+- 個人排行
+- 歷史紀錄
+- 活動 QR Code 簽到（不含簽退）
+- 設定管理：隊伍、成員、分數、活動、標題
+- 匯出 CSV
+- 晨會模式
 
-## 更新方式
-
-把此資料夾內的檔案上傳到 GitHub Repository 根目錄，Netlify 會自動部署。
-
-## Netlify 設定
-
-- Build command：留空
-- Publish directory：留空
-
-## 管理中心
-
-網站右上角 ⚙️ 可進入管理中心，修改隊伍、成員、分數項目、活動名稱。
+Netlify：
+- Build command 留空
+- Publish directory 留空

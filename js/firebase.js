@@ -34,14 +34,6 @@ export function listenConfig(callback, onError) {
   }, onError);
 }
 
-export function saveConfig(data) {
-  return setDoc(doc(db, "platform", "settings"), data);
-}
-
-export function saveRecord(id, data) {
-  return setDoc(doc(db, "team_scores", id), data);
-}
-
-export function removeRecord(id) {
-  return deleteDoc(doc(db, "team_scores", id));
-}
+export const saveConfig = data => setDoc(doc(db, "platform", "settings"), data);
+export const saveRecord = (id,data) => setDoc(doc(db, "team_scores", id), data);
+export const removeRecord = id => deleteDoc(doc(db, "team_scores", id));
