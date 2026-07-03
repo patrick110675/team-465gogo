@@ -1,26 +1,16 @@
-# 人力特攻隊競賽平台 V3 Final
+# AMR 人力特攻隊
 
-AMR 團隊長期使用的競賽計分平台。
+含管理中心版本。
+
+## 更新方式
+
+把此資料夾內的檔案上傳到 GitHub Repository 根目錄，Netlify 會自動部署。
 
 ## Netlify 設定
 
 - Build command：留空
 - Publish directory：留空
 
-## 功能
+## 管理中心
 
-- 首頁即時戰況
-- 團隊計分、個人計分
-- 團隊排行榜、個人排行榜
-- 歷史紀錄
-- 修改 / 刪除紀錄
-- CSV 匯出
-- 晨會模式
-- Firebase 即時同步
-- iPhone Safari 相容，不使用 React / Babel
-
-## 主要設定檔
-
-`js/teams.js`
-
-可修改活動名稱、隊伍、成員、計分規則。
+網站右上角 ⚙️ 可進入管理中心，修改隊伍、成員、分數項目、活動名稱。
