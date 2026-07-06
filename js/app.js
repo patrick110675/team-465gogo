@@ -186,9 +186,28 @@ window.exportMembers=()=>csvDownload("amr_members.csv",[["隊伍","姓名"],...a
 window.resetSeason=async()=>{if(!confirm("確定清空所有積分與簽到紀錄？建議先匯出 CSV。"))return;await Promise.all(S.records.map(r=>deleteDoc(doc(db,"team_scores",r.id))));toast("已開始新一期")}
 
 function render(){if(S.page==="home")home();else if(S.page==="score")score();else if(S.page==="activity")activity();else if(S.page==="rank")rank();else if(S.page==="admin")admin();else if(S.page==="checkin")checkin()}
-if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js').catch(()=>{})}
-await signInAnonymously(auth);
-onSnapshot(doc(db,"platform","settings"),async snap=>{if(!snap.exists()){await setDoc(doc(db,"platform","settings"),DEFAULT);S.cfg=DEFAULT}else S.cfg=snap.data();render()});
-onSnapshot(collection(db,"team_scores"),snap=>{S.records=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));render()});
 
-if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js').catch(()=>{})}
+async function startApp(){
+  render(); // 先顯示預設畫面，避免 Firebase/Auth 卡住時變空白
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js').catch(()=>{})}
+  try{
+    await signInAnonymously(auth);
+  }catch(e){
+    console.warn('Firebase Auth 登入失敗，請到 Firebase Auth Authorized domains 加入目前網域', e);
+    toast('Firebase 登入未完成，先顯示本機畫面');
+  }
+  try{
+    onSnapshot(doc(db,"platform","settings"),async snap=>{
+      if(!snap.exists()){await setDoc(doc(db,"platform","settings"),DEFAULT);S.cfg=DEFAULT}
+      else S.cfg=snap.data();
+      render();
+    },err=>{console.error(err);toast('Firebase 設定讀取失敗')});
+    onSnapshot(collection(db,"team_scores"),snap=>{
+      S.records=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      render();
+    },err=>{console.error(err);toast('Firebase 積分讀取失敗')});
+  }catch(e){
+    console.error(e);toast('Firebase 連線失敗');
+  }
+}
+startApp();
