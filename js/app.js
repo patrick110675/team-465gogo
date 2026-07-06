@@ -65,10 +65,6 @@ function teamOf(name){let p=people().find(x=>x.name===name);return p?p.team:''}
 function members(team){return (teamObj(team)?.members)||[]}
 function rule(id){return data.rules.find(r=>r.id===id)||data.rules[0]}
 function rulesFor(mode){return data.rules.filter(r=>mode==='team'?r.team:r.personal)}
-–${e}`}
-
-
-${data.periods.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${periodLabel(p)}${p.id===periodOfDate()?.id?'（目前）':''}</option>`).join('')}`}
 
 function parseDate(s){let [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
 function fmtDate(d){return d.toISOString().slice(0,10)}
