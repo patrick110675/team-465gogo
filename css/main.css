@@ -119,3 +119,41 @@ input {
 #app {
   padding-bottom: calc(140px + env(safe-area-inset-bottom)) !important;
 }
+
+/* ===== V7.2 Link Navigation Fix ===== */
+a.btn,
+.topNav a,
+#nav a{
+  text-decoration:none;
+  color:inherit;
+  display:block;
+  pointer-events:auto !important;
+  touch-action:manipulation;
+  cursor:pointer;
+  position:relative;
+  z-index:100000;
+}
+.topNav a{
+  background:transparent;
+  color:#e5e7eb;
+  padding:15px 4px;
+  font-weight:950;
+  text-align:center;
+}
+.topNav a.on{
+  background:linear-gradient(135deg,#8a5a15,#f7c65a);
+  color:#111827;
+}
+#nav a{
+  background:transparent;
+  color:#cbd5e1;
+  font-size:12px;
+  font-weight:950;
+  border-radius:14px;
+  padding:6px 2px;
+  text-align:center;
+}
+#nav a span{display:block;font-size:23px}
+#nav a.on{background:linear-gradient(135deg,#8a5a15,#f7c65a);color:#111827}
+.quick a.btn{text-align:left;min-height:88px}
+.quick a.btn span{display:block;font-size:30px;margin-bottom:8px}
