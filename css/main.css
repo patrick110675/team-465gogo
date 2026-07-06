@@ -21,3 +21,32 @@
 .updateNotice{position:fixed;left:12px;right:12px;bottom:86px;z-index:80;border:1px solid var(--line);background:rgba(5,7,13,.94);border-radius:18px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.38)}
 .appInstall{border:1px dashed rgba(247,198,90,.38);border-radius:18px;padding:14px;background:rgba(247,198,90,.06);margin:10px 0}
 @media(max-width:760px){.excelGrid{grid-template-columns:1fr}.reportChart{height:180px}}
+
+
+/* ===== Button Click Fix ===== */
+/* 避免封面光效層蓋住上方功能按鈕 */
+.hero:before,
+.card:before{
+  pointer-events:none !important;
+}
+
+/* 確保導覽列與按鈕永遠可點擊 */
+.heroIn,
+.topNav,
+.quick,
+.quick button,
+#nav,
+#nav button,
+button,
+.btn{
+  position:relative;
+  z-index:20;
+  pointer-events:auto !important;
+  touch-action:manipulation;
+}
+
+/* iPhone / iPad 底部安全距離 */
+#nav{
+  z-index:999;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom));
+}
