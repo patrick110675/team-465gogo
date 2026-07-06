@@ -1,7 +1,7 @@
 
-const KEY='amr_v75_official_range_data';
+const KEY='amr_v8_alpha_baseline_week_data';
 const defaultData={
- settings:{title:'AMR 人力特攻隊',subtitle:'團結・合作・突破・共創榮耀',campaignStart:'2026-07-06',campaignEnd:'2026-09-27'},
+ settings:{title:'AMR 人力特攻隊',subtitle:'V8 Alpha｜基準週自動推算',baseStart:'2026-07-06',baseEnd:'2026-07-12',showBefore:2,showAfter:5},
  periods:[
   {id:'p1',start:'2026-07-06',end:'2026-07-12'},
   {id:'p2',start:'2026-07-13',end:'2026-07-19'},
@@ -42,13 +42,13 @@ function load(){
  try{
   let x=JSON.parse(localStorage.getItem(KEY));
   if(!x) return structuredClone(defaultData);
-  if(!x.periods) x.periods=structuredClone(defaultData.periods);
   if(!x.settings) x.settings=structuredClone(defaultData.settings);
-  if(!x.settings.campaignStart) x.settings.campaignStart=defaultData.settings.campaignStart;
-  if(!x.settings.campaignEnd) x.settings.campaignEnd=defaultData.settings.campaignEnd;
-  syncRollingPeriods(x);
+  if(!x.settings.baseStart) x.settings.baseStart=defaultData.settings.baseStart;
+  if(!x.settings.baseEnd) x.settings.baseEnd=defaultData.settings.baseEnd;
+  if(!x.settings.showBefore) x.settings.showBefore=2;
+  if(!x.settings.showAfter) x.settings.showAfter=5;
   return x;
- }catch(e){let d=structuredClone(defaultData); syncRollingPeriods(d); return d}
+ }catch(e){return structuredClone(defaultData)}
 }
 function save(){localStorage.setItem(KEY,JSON.stringify(data))}
 function uid(p='id'){return p+'_'+Math.random().toString(36).slice(2,9)}
@@ -65,53 +65,23 @@ function teamOf(name){let p=people().find(x=>x.name===name);return p?p.team:''}
 function members(team){return (teamObj(team)?.members)||[]}
 function rule(id){return data.rules.find(r=>r.id===id)||data.rules[0]}
 function rulesFor(mode){return data.rules.filter(r=>mode==='team'?r.team:r.personal)}
-function periodLabel(p){if(!p)return '全部區間';let s=p.start.slice(5).replace('-','/'),e=p.end.slice(5).replace('-','/');return `${s}–${e}`}
-function periodOfDate(d=today()){return data.periods.find(p=>d>=p.start&&d<=p.end)||data.periods[0]}
-function periodById(id){return data.periods.find(p=>p.id===id)||periodOfDate()}
-function periodOptions(sel='', all=false){return `${all?'<option value="">全部日期區間</option>':''}${data.periods.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${periodLabel(p)}${p.id===periodOfDate()?.id?'（目前）':''}</option>`).join('')}`}
+–${e}`}
 
+
+${data.periods.map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${periodLabel(p)}${p.id===periodOfDate()?.id?'（目前）':''}</option>`).join('')}`}
+
+function parseDate(s){let [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
 function fmtDate(d){return d.toISOString().slice(0,10)}
-function parseDate(s){let [y,m,day]=s.split('-').map(Number);return new Date(y,m-1,day)}
 function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
-
-function mondayOf(d){
- let x=new Date(d);
- let day=x.getDay();
- let diff=(day===0?-6:1-day);
- x.setDate(x.getDate()+diff);
- x.setHours(0,0,0,0);
- return x;
-}
-function rolling8Periods(baseDate=new Date()){
- let current=mondayOf(baseDate);
- let start=addDays(current,-14);
- let arr=[];
- for(let i=0;i<8;i++){
-  let s=addDays(start,i*7);
-  let e=addDays(s,6);
-  arr.push({id:'auto_'+fmtDate(s),start:fmtDate(s),end:fmtDate(e),auto:true});
- }
- return arr;
-}
-function syncRollingPeriods(target){
- let d=target||data;
- if(!d) return;
- let autos=rolling8Periods(new Date());
- let manual=(d.periods||[]).filter(p=>!p.auto && !String(p.id||'').startsWith('auto_'));
- d.periods=[...autos,...manual].sort((a,b)=>a.start.localeCompare(b.start));
-}
-
-function generatePeriods(start,end){
- let periods=[], s=parseDate(start), e=parseDate(end), i=1;
- while(s<=e){
-  let pe=addDays(s,6);
-  if(pe>e) pe=e;
-  periods.push({id:'p'+i,start:fmtDate(s),end:fmtDate(pe)});
-  s=addDays(pe,1);
-  i++;
- }
- return periods;
-}
+function daysBetween(a,b){return Math.floor((parseDate(b)-parseDate(a))/86400000)}
+function baseLen(){return Math.max(1,daysBetween(data.settings.baseStart,data.settings.baseEnd)+1)}
+function periodByOffset(offset){let len=baseLen(),s=addDays(parseDate(data.settings.baseStart),offset*len),e=addDays(s,len-1);return {id:'w'+offset,offset,start:fmtDate(s),end:fmtDate(e)}}
+function currentOffset(){return Math.floor(daysBetween(data.settings.baseStart,today())/baseLen())}
+function visiblePeriods(){let cur=currentOffset(),before=Number(data.settings.showBefore||2),after=Number(data.settings.showAfter||5),arr=[];for(let i=cur-before;i<=cur+after;i++)arr.push(periodByOffset(i));return arr}
+function periodOfDate(d=today()){return periodByOffset(Math.floor(daysBetween(data.settings.baseStart,d)/baseLen()))}
+function periodById(id){return periodByOffset(Number(String(id||'w0').replace('w',''))||0)}
+function periodLabel(p){if(!p)return '全部';let clean=s=>s.slice(5).replace(/^0/,'').replace('-','/').replace('/0','/');return `${clean(p.start)}–${clean(p.end)}`}
+function periodOptions(sel='',all=false){let opts=visiblePeriods().map(p=>`<option value="${p.id}" ${sel===p.id?'selected':''}>${periodLabel(p)}${p.offset===currentOffset()?'（目前）':''}</option>`).join('');return `${all?'<option value="">全部日期區間</option>':''}${opts}`}
 
 function recordsByPeriod(pid){return !pid?data.records:data.records.filter(r=>r.periodId===pid)}
 function activeEvent(){return data.events.find(e=>e.active)||data.events[0]}
@@ -151,9 +121,8 @@ window.renderCheckinMembers=t=>{document.getElementById('checkinName').innerHTML
 function rank(){let pid=statPeriod||periodOfDate()?.id, rec=recordsByPeriod(pid), tr=rankTeams(rec), pr=rankPeople(rec);shell(`<section class="card"><h2>統計中心</h2><label class="field"><span>日期區間</span><select onchange="statPeriod=this.value;render()">${periodOptions(pid,true)}</select></label><div class="stats"><div class="stat">總分<b>${rec.reduce((n,r)=>n+Number(r.points||0),0)}</b></div><div class="stat">紀錄數<b>${rec.length}</b></div><div class="stat">新朋友<b>${rec.reduce((n,r)=>n+(r.friends||[]).length,0)}</b></div><div class="stat">第一名<b>${tr[0]?.team||'尚無'}</b></div></div></section><div class="grid2"><section class="card"><h2>團隊排行榜</h2>${rows(tr,'team')}</section><section class="card"><h2>個人排行榜</h2>${rows(pr,'person')}</section></div><section class="card"><h2>積分總表</h2>${teamSummary(rec)}</section><section class="card"><h2>積分流水帳</h2>${rec.slice().reverse().map(recordCard).join('')||'<div class="empty">尚無紀錄</div>'}</section>`)}
 function teamSummary(rec){return teams().map(t=>{let mem=t.members.map(m=>({name:m,score:rec.filter(r=>r.name===m).reduce((n,r)=>n+Number(r.points||0),0)})).sort((a,b)=>b.score-a.score);let total=mem.reduce((n,x)=>n+x.score,0);return `<div class="item"><div class="name">${t.name}｜${total} 分</div>${mem.map(x=>`<div class="row"><div class="medal">👤</div><div><div class="name">${x.name}</div><div class="muted">${t.name}</div></div><div class="score">${x.score}</div></div>`).join('')}</div>`}).join('')}
 
-function admin(){shell(`<section class="card"><h2>管理中心</h2><div class="grid2"><section><h3>競賽週期自動產生</h3><form id="cycleForm"><div class="grid2"><label class="field"><span>競賽開始日期</span><input type="date" name="start" value="${data.settings.campaignStart||''}"></label><label class="field"><span>競賽結束日期</span><input type="date" name="end" value="${data.settings.campaignEnd||''}"></label></div><button class="btn orange wide">產生整季日期區間</button><p class="muted">系統會自動保留至少 8 個日期區間：前 2 週、目前週、後 5 週；每週會自動往前/往後更新，舊積分紀錄會保留。</p></form><h3>日期區間管理</h3><p class="muted">已啟用自動週期：至少 8 個日期區間，前 2 週 + 本週 + 後 5 週，系統會每週自動調整；舊紀錄仍可在歷史/統計查詢。</p><form id="periodForm"><div class="grid2"><label class="field"><span>開始日期</span><input type="date" name="start"></label><label class="field"><span>結束日期</span><input type="date" name="end"></label></div><button class="btn primary">新增區間</button></form>${data.periods.map(p=>`<div class="item"><div class="name">${periodLabel(p)}</div><div class="actions"><button class="btn small red" onclick="delPeriod('${p.id}')">刪除</button></div></div>`).join('')}</section><section><h3>隊伍管理</h3><form id="teamForm"><label class="field"><span>新增隊伍</span><input name="team"></label><button class="btn primary">新增隊伍</button></form>${data.teams.map(t=>`<div class="item"><div class="name">${t.name}</div><div class="muted">${t.members.length}人</div><div class="actions"><button class="btn small blue" onclick="renameTeam('${t.id}')">改名</button><button class="btn small red" onclick="delTeam('${t.id}')">刪除</button></div></div>`).join('')}</section></div><section><h3>成員管理</h3><form id="memberForm"><div class="grid2"><label class="field"><span>隊伍</span><select name="team">${data.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></label><label class="field"><span>姓名</span><input name="name"></label></div><button class="btn primary">新增成員</button></form>${people().map(p=>`<span class="pill">${p.team}｜${p.name}</span>`).join('')}</section></section><section class="card"><h2>積分規則</h2>${data.rules.map(r=>`<div class="item"><div class="name">${r.name}</div><div class="grid3"><label class="field"><span>分數</span><input type="number" value="${r.points}" onchange="updateRule('${r.id}','points',this.value)"></label><label class="field"><span>新朋友分數</span><input type="number" value="${r.friendPoints||0}" onchange="updateRule('${r.id}','friendPoints',this.value)"></label><label class="field"><span>項目名稱</span><input value="${r.name}" onchange="updateRule('${r.id}','name',this.value)"></label></div></div>`).join('')}</section><section class="card"><h2>資料管理</h2><div class="actions"><button class="btn red" onclick="resetAll()">重設全部資料</button></div></section>`)}
-function bindForms(){let f=document.getElementById('scoreForm');if(f)f.onsubmit=e=>{e.preventDefault();let fd=new FormData(f);scoreState.period=fd.get('period');scoreState.team=fd.get('team');scoreState.name=fd.get('name');scoreState.manual=Number(fd.get('manual')||0);scoreState.note=fd.get('note')||'';let total=scoreTotal();if(total===0)return toast('本次得分為 0');let rec={id:editId||uid('rec'),date:now(),createdDate:today(),updatedAt:editId?now():undefined,periodId:scoreState.period,team:scoreState.team,name:scoreState.name,mode:scoreMode,items:structuredClone(scoreState.items),manual:scoreState.manual,points:total,note:scoreState.note||'手動積分',type:scoreMode==='team'?'團隊積分':'個人積分'};if(editId){let i=data.records.findIndex(x=>x.id===editId);if(i>=0)data.records[i]={...data.records[i],...rec};editId=null}else data.records.push(rec);scoreState={period:scoreState.period,team:scoreState.team,name:scoreState.name,items:{},manual:0,note:''};save();toast('已儲存');go('home')};let ef=document.getElementById('eventForm');if(ef)ef.onsubmit=e=>{e.preventDefault();let fd=new FormData(ef),r=rule(fd.get('type'));data.events.forEach(x=>x.active=false);data.events.push({id:uid('ev'),name:fd.get('name')||r.name,type:r.id,periodId:fd.get('period'),date:fd.get('date'),active:true,createdAt:now()});save();toast('活動已建立');go('qr')};let cf=document.getElementById('checkinForm');if(cf)cf.onsubmit=e=>{e.preventDefault();let fd=new FormData(cf),ev=data.events.find(x=>x.id===cf.dataset.event),name=fd.get('name');let friends=[];for(let i=1;i<=friendCount;i++){let fn=(fd.get('friendName'+i)||'').trim(),ph=(fd.get('friendPhone'+i)||'').trim();if(fn)friends.push({name:fn,phone:ph})}checkinMember(ev.id,name,friends,'QR簽到')};let tf=document.getElementById('teamForm');if(tf)tf.onsubmit=e=>{e.preventDefault();let v=new FormData(tf).get('team');if(v){data.teams.push({id:uid('t'),name:v,members:[]});save();render()}};let mf=document.getElementById('memberForm');if(mf)mf.onsubmit=e=>{e.preventDefault();let fd=new FormData(mf),t=data.teams.find(x=>x.id===fd.get('team'));if(t&&fd.get('name')){t.members.push(fd.get('name'));save();render()}};let cf2=document.getElementById('cycleForm');if(cf2)cf2.onsubmit=e=>{e.preventDefault();let fd=new FormData(cf2),s=fd.get('start'),en=fd.get('end');if(!s||!en)return toast('請輸入開始與結束日期');if(s>en)return toast('結束日期不能早於開始日期');if(!confirm('產生整季日期區間？舊積分紀錄會保留，但日期區間清單會重新產生。'))return;data.settings.campaignStart=s;data.settings.campaignEnd=en;data.periods=generatePeriods(s,en);save();toast('日期區間已產生');render()};
-let pf=document.getElementById('periodForm');if(pf)pf.onsubmit=e=>{e.preventDefault();let fd=new FormData(pf);if(fd.get('start')&&fd.get('end')){data.periods.push({id:uid('p'),start:fd.get('start'),end:fd.get('end')});save();render()}}}
+function admin(){shell(`<section class="card"><h2>管理中心</h2><div class="grid2"><section><h3>基準週設定</h3><form id="baseForm"><div class="grid2"><label class="field"><span>基準開始日</span><input type="date" name="baseStart" value="${data.settings.baseStart}"></label><label class="field"><span>基準結束日</span><input type="date" name="baseEnd" value="${data.settings.baseEnd}"></label></div><div class="grid2"><label class="field"><span>前面顯示幾週</span><input type="number" name="showBefore" value="${data.settings.showBefore||2}"></label><label class="field"><span>後面顯示幾週</span><input type="number" name="showAfter" value="${data.settings.showAfter||5}"></label></div><button class="btn orange wide">儲存基準週</button><p class="muted">設定一次基準週，系統會自動往前、往後推算日期區間。</p></form><h3>目前可選區間</h3>${visiblePeriods().map(p=>`<div class="item"><div class="name">${periodLabel(p)}${p.offset===currentOffset()?'（目前）':''}</div></div>`).join('')}${data.periods.map(p=>`<div class="item"><div class="name">${periodLabel(p)}</div><div class="actions"><button class="btn small red" onclick="delPeriod('${p.id}')">刪除</button></div></div>`).join('')}</section><section><h3>隊伍管理</h3><form id="teamForm"><label class="field"><span>新增隊伍</span><input name="team"></label><button class="btn primary">新增隊伍</button></form>${data.teams.map(t=>`<div class="item"><div class="name">${t.name}</div><div class="muted">${t.members.length}人</div><div class="actions"><button class="btn small blue" onclick="renameTeam('${t.id}')">改名</button><button class="btn small red" onclick="delTeam('${t.id}')">刪除</button></div></div>`).join('')}</section></div><section><h3>成員管理</h3><form id="memberForm"><div class="grid2"><label class="field"><span>隊伍</span><select name="team">${data.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}</select></label><label class="field"><span>姓名</span><input name="name"></label></div><button class="btn primary">新增成員</button></form>${people().map(p=>`<span class="pill">${p.team}｜${p.name}</span>`).join('')}</section></section><section class="card"><h2>積分規則</h2>${data.rules.map(r=>`<div class="item"><div class="name">${r.name}</div><div class="grid3"><label class="field"><span>分數</span><input type="number" value="${r.points}" onchange="updateRule('${r.id}','points',this.value)"></label><label class="field"><span>新朋友分數</span><input type="number" value="${r.friendPoints||0}" onchange="updateRule('${r.id}','friendPoints',this.value)"></label><label class="field"><span>項目名稱</span><input value="${r.name}" onchange="updateRule('${r.id}','name',this.value)"></label></div></div>`).join('')}</section><section class="card"><h2>資料管理</h2><div class="actions"><button class="btn red" onclick="resetAll()">重設全部資料</button></div></section>`)}
+function bindForms(){let f=document.getElementById('scoreForm');if(f)f.onsubmit=e=>{e.preventDefault();let fd=new FormData(f);scoreState.period=fd.get('period');scoreState.team=fd.get('team');scoreState.name=fd.get('name');scoreState.manual=Number(fd.get('manual')||0);scoreState.note=fd.get('note')||'';let total=scoreTotal();if(total===0)return toast('本次得分為 0');let rec={id:editId||uid('rec'),date:now(),createdDate:today(),updatedAt:editId?now():undefined,periodId:scoreState.period,team:scoreState.team,name:scoreState.name,mode:scoreMode,items:structuredClone(scoreState.items),manual:scoreState.manual,points:total,note:scoreState.note||'手動積分',type:scoreMode==='team'?'團隊積分':'個人積分'};if(editId){let i=data.records.findIndex(x=>x.id===editId);if(i>=0)data.records[i]={...data.records[i],...rec};editId=null}else data.records.push(rec);scoreState={period:scoreState.period,team:scoreState.team,name:scoreState.name,items:{},manual:0,note:''};save();toast('已儲存');go('home')};let ef=document.getElementById('eventForm');if(ef)ef.onsubmit=e=>{e.preventDefault();let fd=new FormData(ef),r=rule(fd.get('type'));data.events.forEach(x=>x.active=false);data.events.push({id:uid('ev'),name:fd.get('name')||r.name,type:r.id,periodId:fd.get('period'),date:fd.get('date'),active:true,createdAt:now()});save();toast('活動已建立');go('qr')};let cf=document.getElementById('checkinForm');if(cf)cf.onsubmit=e=>{e.preventDefault();let fd=new FormData(cf),ev=data.events.find(x=>x.id===cf.dataset.event),name=fd.get('name');let friends=[];for(let i=1;i<=friendCount;i++){let fn=(fd.get('friendName'+i)||'').trim(),ph=(fd.get('friendPhone'+i)||'').trim();if(fn)friends.push({name:fn,phone:ph})}checkinMember(ev.id,name,friends,'QR簽到')};let tf=document.getElementById('teamForm');if(tf)tf.onsubmit=e=>{e.preventDefault();let v=new FormData(tf).get('team');if(v){data.teams.push({id:uid('t'),name:v,members:[]});save();render()}};let mf=document.getElementById('memberForm');if(mf)mf.onsubmit=e=>{e.preventDefault();let fd=new FormData(mf),t=data.teams.find(x=>x.id===fd.get('team'));if(t&&fd.get('name')){t.members.push(fd.get('name'));save();render()}};let bf=document.getElementById('baseForm');if(bf)bf.onsubmit=e=>{e.preventDefault();let fd=new FormData(bf);data.settings.baseStart=fd.get('baseStart');data.settings.baseEnd=fd.get('baseEnd');data.settings.showBefore=Number(fd.get('showBefore')||2);data.settings.showAfter=Number(fd.get('showAfter')||5);save();toast('基準週已更新');render()};let pf=document.getElementById('periodForm');if(pf)pf.onsubmit=e=>{e.preventDefault();let fd=new FormData(pf);if(fd.get('start')&&fd.get('end')){data.periods.push({id:uid('p'),start:fd.get('start'),end:fd.get('end')});save();render()}}}
 function checkinMember(eventId,name,friends=[],source='補簽'){let ev=data.events.find(x=>x.id===eventId),r=rule(ev.type);if(data.records.some(x=>x.eventId===eventId&&x.name===name))return toast('此活動已簽到');let pts=Number(r.points||0)+Number(friends.length||0)*Number(r.friendPoints||r.points||0);data.records.push({id:uid('rec'),eventId,date:now(),createdDate:today(),periodId:ev.periodId,team:teamOf(name),name,mode:'team',type:r.name,points:pts,friends,note:`${ev.name}｜${source}`,items:{[r.id]:1},manual:0});save();toast('簽到成功');go('home')}
 window.manualCheckin=(eventId,name)=>checkinMember(eventId,name,[],'管理員補簽')
 window.delRecord=id=>{let i=data.records.findIndex(r=>r.id===id);if(i>=0&&confirm('刪除此紀錄？')){data.deleted.push({...data.records[i],deletedAt:now()});data.records.splice(i,1);save();render()}}
