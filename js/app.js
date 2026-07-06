@@ -1,4 +1,13 @@
 
+/* ===== V7.3 Disable old PWA cache while debugging clicks ===== */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(()=>{});
+}
+if(window.caches){
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(()=>{});
+}
+
+
 import{initializeApp}from"https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import{getAuth,signInAnonymously}from"https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import{getFirestore,collection,onSnapshot,doc,setDoc,deleteDoc}from"https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -8,7 +17,7 @@ const fb=initializeApp(firebaseConfig),auth=getAuth(fb),db=getFirestore(fb),app=
 
 const DEFAULT={settings:{title:"AMR 人力特攻隊",subtitle:"團結・合作・突破・共創榮耀",adminPin:"465"},teams:[{id:"t1",name:"五狼攏來隊",active:true,members:["天景","小怡君","立維","永朋"]},{id:"t2",name:"瀚瀚瀚瀚得第一",active:true,members:["子瀚","靜萱","陳怡君","雅韻"]},{id:"t3",name:"盈在起跑點",active:true,members:["可盈","恩慈","士誼","奎璿","美如"]},{id:"t4",name:"陽光委任隊",active:true,members:["怡蒨","楚涵","永濂","瑀芯"]},{id:"t5",name:"你來就隊",active:true,members:["巧云","乙榛","圜翰","建宏"]}],teamRules:[{key:"activity_creation_self",label:"夢想起飛 / 夜創出席",unit:"次",points:2},{key:"activity_creation_friends",label:"帶新朋友參加夢想起飛 / 夜創",unit:"人",points:3},{key:"activity_soft_self",label:"通訊處軟性活動出席",unit:"次",points:2},{key:"activity_soft_friends",label:"帶新朋友參加軟性活動",unit:"人",points:3},{key:"register_contract",label:"登錄 + 簽約",unit:"人",points:10}],personalRules:[{key:"first_interview",label:"初次面談",unit:"次",points:5},{key:"deep_interview",label:"深度面談",unit:"次",points:8},{key:"self_cop",label:"自己參加 COP",unit:"次",points:8},{key:"friend_cop",label:"帶新朋友參加 COP",unit:"位",points:8}],events:[]};
 
-let S={page:new URLSearchParams(location.search).get("page")==="checkin"?"checkin":"home",cfg:DEFAULT,records:[],team:"",name:"",type:"team",vals:{},admin:"events",adminMode:localStorage.getItem("amrAdmin")==="1"};
+let S={page:new URLSearchParams(location.search).get("page")||"home",cfg:DEFAULT,records:[],team:"",name:"",type:"team",vals:{},admin:"events",adminMode:localStorage.getItem("amrAdmin")==="1"};
 
 const pageUrl=p=>`${location.pathname}?page=${encodeURIComponent(p)}`;
 function gotoPage(p){
@@ -109,7 +118,15 @@ function nav(){
 document.getElementById("nav").innerHTML=[["home","🏠","首頁"],["score","🏆","積分"],["activity","▣","QR"],["rank","👑","排行"],["admin","⚙️","管理"]].map(x=>`<a class="${S.page===x[0]?"on":""}" href="${pageUrl(x[0])}"><span>${x[1]}</span>${x[2]}</a>`).join("")
 }
 function cover(){return`<section class="hero"><div class="heroIn"><div class="amr">AMR</div><h1>人力特攻隊</h1><p>${C().settings.subtitle}</p><div class="topNav">${[["home","首頁"],["score","積分"],["activity","QR簽到"],["rank","排行榜"],["admin","管理"]].map(x=>`<a class="${S.page===x[0]?"on":""}" href="${pageUrl(x[0])}">${x[1]}</a>`).join("")}</div></div></section>`}
-function shell(b){app.innerHTML=cover()+b;nav()} window.go=p=>{S.page=p;history.pushState(null,'',pageUrl(p));render()}
+function shell(b){
+app.innerHTML=`<div style="position:sticky;top:0;z-index:999999;background:#05070d;border-bottom:1px solid rgba(247,198,90,.35);padding:8px;display:grid;grid-template-columns:repeat(5,1fr);gap:4px">
+<a class="btn small" href="${pageUrl('home')}" style="text-align:center">首頁</a>
+<a class="btn small" href="${pageUrl('score')}" style="text-align:center">積分</a>
+<a class="btn small" href="${pageUrl('activity')}" style="text-align:center">QR</a>
+<a class="btn small" href="${pageUrl('rank')}" style="text-align:center">排行</a>
+<a class="btn small" href="${pageUrl('admin')}" style="text-align:center">管理</a>
+</div>`+cover()+b;nav()}
+window.go=p=>{S.page=p;history.pushState(null,'',pageUrl(p));render()}
 const rows=(arr,type)=>arr.map((r,i)=>`<div class="row"><div class="medal ${i==0?"one":i==1?"two":i==2?"three":""}">${i+1}</div><div><div class="name">${type==="team"?r.team:r.name}</div><div class="muted">${type==="team"?"團隊":r.team}</div></div><div class="score">${r.score}</div></div>`).join("")||`<div class="muted">尚無資料</div>`;
 
 function home(){let tr=teamRank(),pr=personRank(),a=attCounts(activeEvent()),today=S.records.filter(r=>new Date(r.createdAt||0).toDateString()===new Date().toDateString()),friends=S.records.reduce((n,r)=>n+Number(r.friends||0),0);shell(`<div class="quick"><a class="btn" href="${pageUrl('score')}"><span>＋</span>新增積分</a><a class="btn" href="${pageUrl('activity')}"><span>▣</span>建立 QR</a><a class="btn" href="${pageUrl('rank')}"><span>👑</span>排行榜</a><a class="btn" href="${pageUrl('admin')}"><span>⚙️</span>管理中心</a></div><div class="appInstall"><b>📱 AMR App</b><div class="muted">可加入手機主畫面使用。iPhone 請用 Safari 分享 → 加入主畫面。</div><button class="btn small primary" onclick="installApp()" style="margin-top:8px">安裝 / 加入主畫面</button></div><section class="war"><div class="warItem">目前冠軍<b>${tr[0]?.team||"尚無"}</b></div><div class="warItem">本期 MVP<b>${pr[0]?.name||"尚無"}</b></div><div class="warItem">今日新增<b>${today.length} 筆</b></div><div class="warItem">新朋友<b>${friends} 位</b></div></section><section class="card champion"><div class="cup">🏆</div><div class="bigName">${tr[0]?.team||"尚無資料"}</div><div class="bigScore">${tr[0]?.score||0}<small> 分</small></div></section><div class="grid2"><section class="card"><h2>AMR 出席</h2><div class="grid2"><div>✅ 已到 <b>${a.present}</b></div><div>🕘 遲到 <b>${a.late}</b></div><div>📋 請假 <b>${a.leave}</b></div><div>❌ 未到 <b>${a.absent}</b></div></div></section><section class="card"><h2>MVP</h2><div class="bigName">${pr[0]?.name||"尚無"}</div><div class="bigScore" style="font-size:42px">${pr[0]?.score||0}</div></section></div><div class="grid2"><section class="card"><h2>團隊前三名</h2>${rows(tr.slice(0,3),"team")}</section><section class="card"><h2>個人排行榜</h2>${rows(pr.slice(0,5),"person")}</section></div><section class="card"><h2>最新活動</h2>${S.records.slice(0,5).map(r=>`<div class="row"><div class="medal">＋</div><div><div class="name">${r.name||""}</div><div class="muted">${r.note||""}｜${r.team||""}</div></div><div class="score">${r.totalScore||0}</div></div>`).join("")||"尚無紀錄"}</section>`)}
@@ -199,7 +216,7 @@ function render(){if(S.page==="home")home();else if(S.page==="score")score();els
 
 async function startApp(){
   render(); // 先顯示預設畫面，避免 Firebase/Auth 卡住時變空白
-  if('serviceWorker' in navigator){navigator.serviceWorker.register('./service-worker.js').catch(()=>{})}
+  )}
   try{
     await signInAnonymously(auth);
   }catch(e){

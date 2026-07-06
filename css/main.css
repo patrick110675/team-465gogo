@@ -157,3 +157,82 @@ a.btn,
 #nav a.on{background:linear-gradient(135deg,#8a5a15,#f7c65a);color:#111827}
 .quick a.btn{text-align:left;min-height:88px}
 .quick a.btn span{display:block;font-size:30px;margin-bottom:8px}
+
+/* ===== V7.3 Final Click Rescue ===== */
+*{pointer-events:auto}
+html,body,#app{min-height:100%;}
+
+.hero::before,
+.hero::after,
+.card::before,
+.card::after,
+body::before,
+body::after,
+#loading{
+  display:none!important;
+  content:none!important;
+  pointer-events:none!important;
+}
+
+.hero{
+  min-height:auto!important;
+  margin:0 -14px 14px!important;
+  padding:18px 14px!important;
+  overflow:visible!important;
+  border-radius:0 0 24px 24px!important;
+}
+
+.heroIn{
+  padding-top:8px!important;
+  position:relative!important;
+  z-index:1!important;
+}
+
+.topNav{
+  position:relative!important;
+  z-index:5!important;
+  pointer-events:auto!important;
+  overflow:visible!important;
+}
+
+.topNav a,
+.quick a,
+#nav a{
+  pointer-events:auto!important;
+  -webkit-user-select:none;
+  user-select:none;
+  cursor:pointer!important;
+}
+
+.quick{
+  position:relative!important;
+  z-index:10!important;
+  pointer-events:auto!important;
+}
+
+.quick a.btn{
+  display:block!important;
+  pointer-events:auto!important;
+  position:relative!important;
+  z-index:20!important;
+}
+
+#nav{
+  position:fixed!important;
+  z-index:2147483647!important;
+  pointer-events:auto!important;
+  background:rgba(5,7,13,.98)!important;
+}
+
+#nav a{
+  display:block!important;
+  pointer-events:auto!important;
+  position:relative!important;
+  z-index:2147483647!important;
+}
+
+#app{
+  position:relative!important;
+  z-index:1!important;
+  padding-bottom:160px!important;
+}
