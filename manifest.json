@@ -1,6 +1,6 @@
 {
-  "name": "AMR Team V7.5 Official",
-  "short_name": "AMR V7.5",
+  "name": "AMR 人力特攻隊",
+  "short_name": "AMR",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
