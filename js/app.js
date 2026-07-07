@@ -1,4 +1,14 @@
-const KEY='amr_platform_1_data';
+const firebaseConfig={
+ apiKey:'AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY',
+ authDomain:'team-465.firebaseapp.com',
+ projectId:'team-465',
+ storageBucket:'team-465.firebasestorage.app',
+ messagingSenderId:'1083534515383',
+ appId:'1:1083534515383:web:b4f466e0ac36d42bc34132'
+};
+let db=null,auth=null,cloudReady=false,cloudSaving=false;
+function cloudStatusText(){return cloudReady?'Firebase 已連線':'本機模式';}
+const KEY='amr_platform_1_lightblue_v2_data';
 const defaultData={
  settings:{mainTitle:'AMR',subTitle:'人力特攻隊',season:'2026 第三季競賽',slogan:'團結・合作・突破・共創榮耀',notice:'歡迎來到 AMR 人力特攻隊',baseStart:'2026-07-06'},
  teams:[
@@ -9,19 +19,22 @@ const defaultData={
   {id:'t5',name:'你來就隊',members:['巧云','乙榛','圜翰','建宏']}
  ],
  personalRules:[
+  {id:'web_contact',name:'網增接觸 / 新增名單 / 約訪',points:1,unit:'次'},
+  {id:'warm_cop_soft',name:'緣故約訪 COP / 軟性活動',points:1,unit:'次'},
+  {id:'first_interview',name:'初次面談',points:5,unit:'次'},
+  {id:'deep_interview',name:'深度面談',points:8,unit:'次'},
+  {id:'self_cop',name:'自己參加 COP',points:8,unit:'次'},
+  {id:'friend_cop',name:'帶新朋友參加 COP',points:8,unit:'位'}
+ ],
+ teamRules:[
   {id:'dream_attend',name:'夢想起飛 / 夜創出席',points:2,unit:'次'},
   {id:'dream_friend',name:'帶新朋友參加夢想起飛 / 夜創',points:3,unit:'人'},
   {id:'soft_attend',name:'通訊處軟性活動出席',points:2,unit:'次'},
   {id:'soft_friend',name:'帶新朋友參加軟性活動',points:3,unit:'人'},
   {id:'exam_pass',name:'公司考通過',points:3,unit:'人'},
   {id:'register_contract',name:'登錄 + 簽約',points:10,unit:'人'},
-  {id:'excellent',name:'參加優培',points:10,unit:'人'}
- ],
- teamRules:[
-  {id:'team_recruit',name:'團隊共同運作增員',points:1,unit:'次'},
-  {id:'team_event',name:'團隊活動出席',points:2,unit:'次'},
-  {id:'team_bonus',name:'團隊達標獎勵',points:5,unit:'次'},
-  {id:'team_special',name:'特別加分',points:1,unit:'次'}
+  {id:'excellent',name:'參加優培',points:10,unit:'人'},
+  {id:'team_recruit',name:'團隊共同運作增員',points:1,unit:'次'}
  ],
  portalItems:[
   {id:'portal_supercup',order:1,name:'人力超級盃',icon:'🏆',desc:'競賽辦法・積分規則・獎勵制度',featured:true,image:'./assets/portal/supercup-1.jpeg',summary:'115年度人力發展超級盃，整合競賽辦法、積分制度、成功增員與獎勵重點。',gallery:['./assets/portal/supercup-1.jpeg','./assets/portal/supercup-2.jpeg','./assets/portal/supercup-3.jpeg','./assets/portal/supercup-4.jpeg','./assets/portal/supercup-5.jpeg'],links:[]},
@@ -46,7 +59,27 @@ let currentTeam=localStorage.getItem('amr_current_team')||data.teams[0].name;
 let currentName=localStorage.getItem('amr_current_name')||data.teams[0].members[0];
 function clone(x){return JSON.parse(JSON.stringify(x))}
 function load(){try{let x=JSON.parse(localStorage.getItem(KEY));if(!x)return clone(defaultData);return {...clone(defaultData),...x,settings:{...defaultData.settings,...(x.settings||{})},portalItems:(x.portalItems&&x.portalItems.length?x.portalItems:defaultData.portalItems),announcements:(x.announcements&&x.announcements.length?x.announcements:defaultData.announcements)}}catch(e){return clone(defaultData)}}
-function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));saveCloud()}
+async function initCloud(){
+ try{
+  if(!window.firebase){console.warn('Firebase SDK 未載入');return}
+  if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
+  db=firebase.firestore();auth=firebase.auth();
+  await auth.signInAnonymously().catch(()=>null);
+  const snap=await db.collection('platform').doc('settings').get();
+  const remote=snap.exists&&snap.data()&&snap.data().amrPlatformV1;
+  if(remote){data={...clone(defaultData),...remote,settings:{...defaultData.settings,...(remote.settings||{})},portalItems:(remote.portalItems&&remote.portalItems.length?remote.portalItems:defaultData.portalItems),announcements:(remote.announcements&&remote.announcements.length?remote.announcements:defaultData.announcements)};localStorage.setItem(KEY,JSON.stringify(data));}
+  cloudReady=true;render();
+initCloud();
+ }catch(e){console.warn('Firebase 連線失敗',e);cloudReady=false}
+}
+async function saveCloud(){
+ if(!db||cloudSaving)return;
+ try{cloudSaving=true;await db.collection('platform').doc('settings').set({amrPlatformV1:data,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true})}
+ catch(e){console.warn('Firebase 儲存失敗',e)}
+ finally{cloudSaving=false}
+}
+
 function uid(p='id'){return p+'_'+Math.random().toString(36).slice(2,9)}
 function today(){let d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function now(){return new Date().toLocaleString('zh-TW')}
@@ -69,7 +102,7 @@ function go(p){history.pushState(null,'',link(p));page=p;render()} window.go=go;
 window.addEventListener('popstate',()=>{page=new URLSearchParams(location.search).get('page')||'home';render()});
 document.addEventListener('click',e=>{let a=e.target.closest('a[href^="?page="]');if(!a)return;e.preventDefault();go(new URLSearchParams(a.getAttribute('href').slice(1)).get('page')||'home')},true);
 function shell(body){document.getElementById('app').innerHTML=body+fab();nav();bindForms()}
-function hero(){let d=new Date();return `<section class="topHero"><div class="hamb">☰</div><div class="bell">🔔</div><div class="heroText"><div class="amr">${data.settings.mainTitle}</div><h1>${data.settings.subTitle}</h1><p class="season">${data.settings.season}</p></div><div class="heroArt"></div><div class="heroMeta"><div class="datePill">📅 ${d.getFullYear()} / ${String(d.getMonth()+1).padStart(2,'0')} / ${String(d.getDate()).padStart(2,'0')} (${['日','一','二','三','四','五','六'][d.getDay()]})</div><div class="slogan">${data.settings.slogan}</div></div></section>`}
+function hero(){let d=new Date();return `<section class="topHero"><div class="bell">🔔</div><div class="heroText"><div class="amr">${data.settings.mainTitle}</div><h1>${data.settings.subTitle}</h1><p class="season">${data.settings.season}</p></div><div class="heroArt"><span class="peak"></span><span class="teamIcon">👥</span><span class="upArrow">↗</span></div><div class="heroMeta"><div class="datePill">📅 ${d.getFullYear()} / ${String(d.getMonth()+1).padStart(2,'0')} / ${String(d.getDate()).padStart(2,'0')} (${['日','一','二','三','四','五','六'][d.getDay()]})</div><div class="slogan">${data.settings.slogan}</div></div></section>`}
 function nav(){let arr=[['home','🏠','首頁'],['qr','▦','QR'],['rank','🏆','排行榜'],['portal','⭐','Portal'],['admin','⚙️','管理']];document.getElementById('bottomNav').innerHTML=arr.map(x=>`<a href="${link(x[0])}" class="${page===x[0]?'active':''}"><span>${x[1]}</span>${x[2]}</a>`).join('')}
 function fab(){return page==='checkin'?'':`<button class="fab" onclick="openScoreSheet()">＋</button><div id="sheetMask" class="sheetMask" onclick="closeScoreSheet()"></div><div id="scoreSheet" class="scoreSheet"><div class="sheetHandle"></div><h2>新增積分</h2><button onclick="startScore('personal')">👤 個人積分</button><button onclick="startScore('team')">👥 團隊積分</button><button class="cancel" onclick="closeScoreSheet()">取消</button></div>`}
 window.openScoreSheet=()=>{document.getElementById('sheetMask')?.classList.add('show');document.getElementById('scoreSheet')?.classList.add('show')}
@@ -102,7 +135,7 @@ function qr(){let ev=activeEvent();shell(hero()+`<section class="card"><h2>📱 
 function checkin(){let id=new URLSearchParams(location.search).get('event'),ev=data.events.find(e=>e.id===id);if(!ev)return shell(hero()+`<section class="card"><h2>找不到活動</h2></section>`);shell(`<section class="card"><h2>AMR｜${eventLabel(ev.type)}</h2><div class="muted">${ev.date} ${ev.time}｜${ev.place||'AMR'}</div><form id="checkinForm"><input type="hidden" name="eventId" value="${ev.id}"><div class="checkType"><label><input type="radio" name="personType" value="member" checked>夥伴</label>${isSoft(ev.type)?'<label><input type="radio" name="personType" value="friend">新朋友</label>':''}</div><div id="memberFields"><label class="field"><span>隊伍</span><select name="team" onchange="updateCheckMembers(this.value)">${teamOptions(currentTeam)}</select></label><label class="field"><span>姓名</span><select name="name" id="checkMemberName">${memberOptions(currentTeam,currentName)}</select></label>${ev.type==='meeting'?'<label class="field"><span>狀態</span><select name="status"><option value="present">出席</option><option value="leave">請假</option></select></label>':''}</div><div id="friendFields" style="display:none"><label class="field"><span>新朋友姓名</span><input name="friendName"></label><label class="field"><span>電話</span><input name="phone"></label><label class="field"><span>介紹人</span><select name="introducer">${people().map(p=>`<option value="${p.name}">${p.name}｜${p.team}</option>`).join('')}</select></label></div><button class="btn primary wide">完成簽到</button></form></section>`)}
 function portal(){let id=new URLSearchParams(location.search).get('id');if(id){let p=data.portalItems.find(x=>x.id===id);if(!p)return shell(hero()+`<section class="card">找不到 Portal</section>`);shell(hero()+`<section class="card portalHero"><h2>${p.icon} ${p.name}</h2><p>${p.summary||p.desc||''}</p>${p.image?`<img src="${p.image}">`:''}</section><section class="card"><h2>🖼 圖片資料</h2><div class="galleryGrid">${(p.gallery||[]).map(img=>`<a href="${img}" target="_blank"><img src="${img}"></a>`).join('')||'<div class="empty">尚無圖片</div>'}</div></section><section class="card"><h2>📄 連結 / PDF</h2>${(p.links||[]).map(l=>`<a class="btn wide" target="_blank" href="${l.url}">${l.title}</a>`).join('')||'<div class="empty">尚無連結</div>'}</section>`);return}shell(hero()+`<section class="card"><h2>⭐ Portal</h2><p class="muted">點選六大入口後，再查看圖片、PDF、影片與資料。</p><div class="portalGrid">${portalCards()}</div></section>`)}
 function portalCards(){return data.portalItems.slice().sort((a,b)=>Number(a.order)-Number(b.order)).filter(x=>x.featured).map((x,i)=>`<a class="portalCard" href="?page=portal&id=${x.id}"><span class="portalBadge">${String(i+1).padStart(2,'0')}</span>${x.image?`<img src="${x.image}">`:''}<div class="portalShade"><b>${x.icon} ${x.name}</b><em>${x.desc}</em></div></a>`).join('')}
-function admin(){shell(hero()+`<section class="card"><h2>⚙️ 管理中心</h2><div class="grid2"><form id="settingsForm" class="item"><h2>首頁設定</h2><label class="field"><span>主標題</span><input name="mainTitle" value="${data.settings.mainTitle}"></label><label class="field"><span>副標題</span><input name="subTitle" value="${data.settings.subTitle}"></label><label class="field"><span>競賽文字</span><input name="season" value="${data.settings.season}"></label><label class="field"><span>公告</span><textarea name="notice">${data.settings.notice}</textarea></label><button class="btn primary wide">儲存設定</button></form><form id="announceForm" class="item"><h2>新增公告</h2><label class="field"><span>類型</span><input name="type" value="公告"></label><label class="field"><span>標題</span><input name="title"></label><button class="btn primary wide">新增公告</button></form></div><div class="actions"><button class="btn" onclick="exportAll()">匯出資料</button><button class="btn red" onclick="resetAll()">恢復預設</button></div></section>`)}
+function admin(){shell(hero()+`<section class="card"><h2>⚙️ 管理中心</h2><div class="muted">☁️ Firebase 狀態：${cloudStatusText()}</div><div class="grid2"><form id="settingsForm" class="item"><h2>首頁設定</h2><label class="field"><span>主標題</span><input name="mainTitle" value="${data.settings.mainTitle}"></label><label class="field"><span>副標題</span><input name="subTitle" value="${data.settings.subTitle}"></label><label class="field"><span>競賽文字</span><input name="season" value="${data.settings.season}"></label><label class="field"><span>公告</span><textarea name="notice">${data.settings.notice}</textarea></label><button class="btn primary wide">儲存設定</button></form><form id="announceForm" class="item"><h2>新增公告</h2><label class="field"><span>類型</span><input name="type" value="公告"></label><label class="field"><span>標題</span><input name="title"></label><button class="btn primary wide">新增公告</button></form></div><div class="actions"><button class="btn" onclick="exportAll()">匯出資料</button><button class="btn red" onclick="resetAll()">恢復預設</button></div></section>`)}
 function bindForms(){let sf=document.getElementById('settingsForm');if(sf)sf.onsubmit=e=>{e.preventDefault();let f=new FormData(sf);['mainTitle','subTitle','season','notice'].forEach(k=>data.settings[k]=f.get(k));save();toast('已儲存');render()};let af=document.getElementById('announceForm');if(af)af.onsubmit=e=>{e.preventDefault();let f=new FormData(af);data.announcements.unshift({id:uid('ann'),type:f.get('type')||'公告',title:f.get('title')||'新公告',date:today().replaceAll('-','/')});save();toast('已新增公告');render()};let ef=document.getElementById('eventForm');if(ef)ef.onsubmit=e=>{e.preventDefault();let f=new FormData(ef);data.events.forEach(x=>x.active=false);let ev={id:uid('evt'),brand:'AMR',type:f.get('type'),date:f.get('date'),time:f.get('time'),place:f.get('place'),active:true,createdAt:now()};data.events.push(ev);save();toast('已建立 QR');render()};let cf=document.getElementById('checkinForm');if(cf){cf.onchange=e=>{if(e.target.name==='personType'){document.getElementById('memberFields').style.display=e.target.value==='member'?'block':'none';document.getElementById('friendFields').style.display=e.target.value==='friend'?'block':'none'}};cf.onsubmit=e=>{e.preventDefault();let f=new FormData(cf),ev=data.events.find(x=>x.id===f.get('eventId'));let type=f.get('personType');let rec={id:uid('chk'),eventId:ev.id,eventType:ev.type,date:ev.date,time:now(),personType:type,status:f.get('status')||'present'};if(type==='friend'){rec.name=f.get('friendName');rec.phone=f.get('phone');rec.introducer=f.get('introducer');rec.team=teamOf(rec.introducer)}else{rec.name=f.get('name');rec.team=f.get('team')}data.checkins.push(rec);if(isSoft(ev.type)&&rec.status==='present'){autoScoreFromCheckin(ev,rec)}save();toast('簽到完成');go('qr')}}}
 function autoScoreFromCheckin(ev,rec){let points=0,note='';if(rec.personType==='member'){points=ev.type==='soft'?2:2;note=`${eventLabel(ev.type)}出席`}else{points=ev.type==='soft'?3:3;note=`帶新朋友參加${eventLabel(ev.type)}`;rec.name=rec.name||'新朋友'}let name=rec.personType==='friend'?rec.introducer:rec.name;data.scores.push({id:uid('score'),type:'personal',team:teamOf(name)||rec.team,name,items:[],points,source:'QR自動加分',registrar:'QR',note,date:ev.date,createdAt:now(),deleted:false})}
 window.updateCheckMembers=team=>{document.getElementById('checkMemberName').innerHTML=memberOptions(team,members(team)[0])}
@@ -114,3 +147,4 @@ window.exportAll=()=>{let blob=new Blob([JSON.stringify(data,null,2)],{type:'app
 window.resetAll=()=>{if(confirm('恢復預設會清除目前資料，確定？')){localStorage.removeItem(KEY);data=load();render()}}
 function render(){if(page==='home')home();else if(page==='score')score();else if(page==='qr')qr();else if(page==='checkin')checkin();else if(page==='rank')rank();else if(page==='portal')portal();else if(page==='admin')admin();else home()}
 render();
+initCloud();
