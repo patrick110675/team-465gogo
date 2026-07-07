@@ -1,13 +1,7 @@
-# AMR Portal V3.0
+# AMR Platform 1.0
 
-已完成：
-- 首頁維持既有 Dashboard，Portal 放最後
-- 底部：首頁 / QR / 排行榜 / Portal / 管理
-- 中間 + 按鈕上移，不遮排行榜
-- Portal 六張圖片卡，點進去才看資料
-- QR 分為每週三例會、夢想起飛、夜間 COP、自訂軟性活動
-- 例會不加分、不新增新朋友；統計出席、請假、缺席、季度獎金資格
-- 軟性活動可新增新朋友姓名、電話、介紹人
-- 排行榜含積分排行與新朋友排行
+正式版重整：淺藍首頁 Dashboard、QR、積分、排行榜、Portal、管理。
 
-上傳 GitHub Pages 時，整包內容放到 repository 根目錄即可。
+上傳方式：把本資料夾內所有檔案上傳到 GitHub repo 根目錄，等待 GitHub Pages 部署完成即可。
+
+資料目前使用瀏覽器 localStorage；若要接 Firebase，可在後續版本把 `save()` / `load()` 換成 Firestore 讀寫。
