@@ -27,7 +27,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
@@ -68,13 +68,60 @@ const scoreRules = {
   personal:[['contact','網增接觸／新增名單／約訪',1],['soft_cop','緣故約訪 COP／軟性活動',2],['first_meeting','初次面談',3],['deep_meeting','深度面談',5],['self_cop','自己參加 COP',2],['bring_cop','帶新朋友參加 COP',3]],
   team:[['dream_attend','夢想起飛／夜創出席',2],['dream_friend','帶新朋友參加夢想起飛',3],['soft_attend','通訊處軟性活動出席',2],['soft_friend','帶新朋友參加軟性活動',3],['exam_pass','公司考通過',5],['registered','登錄＋簽約',10],['training','參加優培',5],['team_recruit','團隊共同運作增員',20]]
 };
-let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{}};
+let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{}};
 function col(name){return collection(db,name)}
 function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); render();},()=>{})}
 onSnapshot(doc(db,'platform','settings'),snap=>{S.settings={...defaultSettings,...(snap.exists()?snap.data():{})}; applyTheme(); render();});
 ['teams','members','announcements','portals','score_history','events','attendance','checkins'].forEach(n=>listen(n,n==='score_history'?'scores':n));
 async function seedPortals(){const qs=await getDocs(col('portals')); if(qs.empty){for(const p of defaultPortals) await addDoc(col('portals'),{...p,createdAt:serverTimestamp()});}}
 setTimeout(seedPortals,1200);
+const norm=v=>String(v||'').trim().toLowerCase();
+function readLegacyTeams(data){
+  const a=data?.amrData?.teams;
+  const b=data?.teams;
+  if(Array.isArray(a)&&a.length) return a;
+  if(Array.isArray(b)&&b.length) return b;
+  return [];
+}
+async function importLegacyTeams(manual=false){
+  try{
+    const snap=await getDoc(doc(db,'platform','settings'));
+    const data=snap.exists()?snap.data():{};
+    const legacy=readLegacyTeams(data);
+    if(!legacy.length){S.importReport='找不到舊隊伍資料'; if(manual) toast('找不到舊資料'); render(); return;}
+    const teamDocs=(await getDocs(col('teams'))).docs.map(d=>({id:d.id,...d.data()}));
+    const memDocs=(await getDocs(col('members'))).docs.map(d=>({id:d.id,...d.data()}));
+    const teamMap=new Map(teamDocs.map(t=>[norm(t.name),t]));
+    const memberSet=new Set(memDocs.map(m=>norm((m.teamName||'')+'|'+(m.name||''))));
+    let addedTeams=0, addedMembers=0, skippedTeams=0, skippedMembers=0;
+    for(const raw of legacy){
+      const name=String(raw?.name||raw?.title||'').trim();
+      if(!name) continue;
+      let team=teamMap.get(norm(name));
+      if(!team){
+        const ref=await addDoc(col('teams'),{name, color:raw.color||'', icon:raw.icon||'', note:'由舊資料自動匯入', source:'legacy', createdAt:serverTimestamp(), updatedAt:serverTimestamp()});
+        team={id:ref.id,name}; teamMap.set(norm(name),team); addedTeams++;
+      }else skippedTeams++;
+      const members=Array.isArray(raw.members)?raw.members:[];
+      for(const m of members){
+        const mn=String(m?.name||m||'').trim();
+        if(!mn) continue;
+        const key=norm(name+'|'+mn);
+        if(memberSet.has(key)){skippedMembers++; continue;}
+        await addDoc(col('members'),{name:mn, teamId:team.id, teamName:name, role:'', phone:'', status:'active', source:'legacy', createdAt:serverTimestamp(), updatedAt:serverTimestamp()});
+        memberSet.add(key); addedMembers++;
+      }
+    }
+    await setDoc(doc(db,'platform','settings'),{legacyImportedAt:new Date().toISOString(),updatedAt:serverTimestamp()},{merge:true});
+    S.importReport=`已匯入 ${addedTeams} 個隊伍、${addedMembers} 位人員；略過重複 ${skippedTeams} 個隊伍、${skippedMembers} 位人員。`;
+    toast('匯入完成'); render();
+  }catch(e){console.error(e); S.importReport='匯入失敗：'+(e?.message||e); if(manual) toast('匯入失敗'); render();}
+}
+async function autoImportLegacy(){
+  if(S.teams.length||S.members.length||S.settings?.legacyImportedAt) return;
+  await importLegacyTeams(false);
+}
+setTimeout(autoImportLegacy,1800);
 function applyTheme(){const th=S.settings.theme||'sky';document.body.dataset.theme=th==='custom'?'sky':th;document.documentElement.style.setProperty('--titleSize',(S.settings.titleSize||32)+'px');document.documentElement.style.setProperty('--bodySize',(S.settings.bodySize||16)+'px');}
 
 function nav(){const items=[['home','🏠','首頁'],['qr','📱','QR'],['ranking','🏆','排行榜'],['portal','⭐','Portal'],['admin','⚙️','管理']];$('#nav').innerHTML=items.map(([id,ic,tx])=>`<button type="button" class="navBtn ${S.page===id?'active':''}" data-go="${id}"><i>${ic}</i>${tx}</button>`).join('')}
@@ -107,8 +154,8 @@ function portal(){const items=(S.portals.length?S.portals:defaultPortals.map((p,
 function portalDetail(p){if(!p)return '<div class="card">找不到資料</div>';let action=''; if(p.type==='activity'&&p.url) action=`<a class="btn full" href="${esc(p.url)}" target="_blank">立即報名</a>`; if(p.type==='pdf'&&p.pdfUrl) action=`<a class="btn full" href="${esc(p.pdfUrl)}" target="_blank">開啟 PDF</a>`; if(p.type==='link'&&p.url) action=`<a class="btn full" href="${esc(p.url)}" target="_blank">前往連結</a>`; if(p.type==='youtube'&&p.youtubeUrl) action=`<div style="position:relative;padding-top:56%;border-radius:18px;overflow:hidden"><iframe src="${ytEmbed(p.youtubeUrl)}" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen></iframe></div>`;return `${header()}<div class="card" style="margin-top:14px"><button class="btn secondary" data-go="portal">← 返回 Portal</button><h2>${esc(p.icon||'⭐')} ${esc(p.title)}</h2><p>${esc(p.subtitle||'')}</p>${p.image?`<img src="${p.image}" style="width:100%;border-radius:22px;margin:12px 0">`:''}<div style="white-space:pre-wrap;line-height:1.7">${esc(p.content||'')}</div>${p.date||p.place?`<div class="notice" style="margin:12px 0">${p.date?`時間：${esc(p.date)}<br>`:''}${p.place?`地點：${esc(p.place)}`:''}</div>`:''}${action?`<div style="margin-top:14px">${action}</div>`:''}</div>`}
 function ytEmbed(url){const m=String(url||'').match(/(?:v=|youtu\.be\/|embed\/)([\w-]+)/); return m?`https://www.youtube.com/embed/${m[1]}`:url}
 
-function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['theme','🎨 主題']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
-function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='theme')return themeCenter();}
+function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
+function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
 function settingsForm(){return `<h2>🏠 首頁設定</h2><label>主標題</label><input id="setMain" value="${esc(S.settings.mainTitle)}"><label>副標題</label><input id="setSub" value="${esc(S.settings.subTitle)}"><label>標語</label><input id="setSlogan" value="${esc(S.settings.slogan)}"><label>Banner 圖片網址</label><input id="setBanner" value="${esc(S.settings.bannerImage)}"><label>標題大小</label><input id="setTitleSize" type="number" value="${S.settings.titleSize||32}"><label>內文字大小</label><input id="setBodySize" type="number" value="${S.settings.bodySize||16}"><button class="btn full" id="saveSettings" type="button">儲存首頁設定</button>`}
 async function saveSettings(){await setDoc(doc(db,'platform','settings'),{...S.settings,mainTitle:$('#setMain').value,subTitle:$('#setSub').value,slogan:$('#setSlogan').value,bannerImage:$('#setBanner').value,titleSize:Number($('#setTitleSize').value||32),bodySize:Number($('#setBodySize').value||16),updatedAt:serverTimestamp()},{merge:true});toast('已儲存')}
 function crudAnnouncements(){return `<h2>📢 公告管理</h2><div class="split"><div><h3>公告列表</h3>${S.announcements.length?S.announcements.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.title)}</b><p>${a.visible===false?'隱藏':'顯示'}｜${fmtDate(a.createdAt)}</p></div><button class="btn small secondary" data-load-ann="${a.id}">編輯</button><button class="btn small danger" data-del-ann="${a.id}">刪除</button></div>`).join(''):'<div class="empty">尚無公告</div>'}</div><div><h3>${S.edit?.type==='ann'?'編輯':'新增'}公告</h3><label>標題</label><input id="annTitle" value="${esc(S.edit?.data?.title||'')}"><label>內容</label><textarea id="annContent">${esc(S.edit?.data?.content||'')}</textarea><label><input id="annVisible" type="checkbox" ${S.edit?.data?.visible===false?'':'checked'} style="width:auto;min-height:auto"> 顯示</label><button class="btn full" id="saveAnn" type="button">儲存公告</button><button class="btn secondary full" id="newAnn" type="button" style="margin-top:8px">清空新增</button></div></div>`}
@@ -119,6 +166,7 @@ function crudMembers(){return `<h2>👤 人員管理</h2><div class="split"><div
 async function saveMember(){const tid=$('#memTeam').value;const data={name:$('#memName').value,teamId:tid,teamName:teamName(tid),role:$('#memRole').value,phone:$('#memPhone').value,updatedAt:serverTimestamp()}; if(!data.name)return toast('請輸入姓名'); if(S.edit?.type==='member') await updateDoc(doc(db,'members',S.edit.id),data); else await addDoc(col('members'),{...data,createdAt:serverTimestamp()}); S.edit=null; toast('已儲存')}
 function crudPortal(){const d=S.edit?.type==='portal'?S.edit.data:{}; return `<h2>⭐ Portal 管理</h2><div class="split"><div>${S.portals.sort((a,b)=>(a.order||99)-(b.order||99)).map(p=>`<div class="listItem"><div class="grow"><b>${esc(p.title)}</b><p>${p.visible===false?'隱藏':'顯示'}｜排序 ${p.order||''}｜${esc(p.type||'')}</p></div><button class="btn small secondary" data-load-portal="${p.id}">編輯</button><button class="btn small danger" data-del-portal="${p.id}">刪除</button></div>`).join('')||'<div class="empty">尚無 Portal</div>'}</div><div><label>類型</label><select id="portalType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select><label>標題</label><input id="portalTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="portalSub" value="${esc(d.subtitle||'')}"><label>Icon</label><input id="portalIcon" value="${esc(d.icon||'⭐')}"><label>封面圖片網址</label><input id="portalImage" value="${esc(d.image||'')}"><div class="fileNote">可先貼圖片網址；小圖也可下方上傳轉入欄位。</div><input type="file" id="portalImageFile" accept="image/*"><label>內文/說明</label><textarea id="portalContent">${esc(d.content||'')}</textarea><div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||'')}"></div></div><label>報名/外部網址</label><input id="portalUrl" value="${esc(d.url||'')}"><label>PDF 網址</label><input id="portalPdf" value="${esc(d.pdfUrl||'')}"><label>YouTube 網址</label><input id="portalYoutube" value="${esc(d.youtubeUrl||'')}"><div class="formRow"><div><label>排序</label><input id="portalOrder" type="number" value="${d.order||1}"></div><div><label>顯示</label><select id="portalVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div><button class="btn full" id="savePortal" type="button">儲存 Portal</button><button class="btn secondary full" id="newPortal" type="button" style="margin-top:8px">清空新增</button></div></div>`}
 async function savePortal(){const data={type:$('#portalType').value,title:$('#portalTitle').value,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:$('#portalImage').value,content:$('#portalContent').value,date:$('#portalDate').value,place:$('#portalPlace').value,url:$('#portalUrl').value,pdfUrl:$('#portalPdf').value,youtubeUrl:$('#portalYoutube').value,order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()}; if(!data.title)return toast('請輸入標題'); if(S.edit?.type==='portal') await updateDoc(doc(db,'portals',S.edit.id),data); else await addDoc(col('portals'),{...data,createdAt:serverTimestamp()}); S.edit=null; toast('已儲存')}
+function dataImport(){return `<h2>📥 資料匯入</h2><div class="notice">此功能會讀取舊資料 <b>platform → settings → amrData → teams</b>，把原本隊伍與成員帶回新版。系統會自動略過同名隊伍與同隊同名人員，不會刪除舊資料。</div><br><button class="btn full" id="importLegacy" type="button">匯入原有人員與隊伍</button><br><br><div class="card blue"><b>目前新版資料</b><p>隊伍：${S.teams.length} 個｜人員：${S.members.length} 位</p>${S.importReport?`<p>${esc(S.importReport)}</p>`:''}</div>`}
 function themeCenter(){return `<h2>🎨 主題中心</h2><div class="grid grid2">${themes.map(([id,name])=>`<button class="btn ${S.settings.theme===id?'':'secondary'}" data-theme-set="${id}" type="button">${name}</button>`).join('')}</div><p class="fileNote">主題會同步到 Firebase，所有裝置重新開啟後會套用同一主題。</p>`}
 async function setTheme(id){await setDoc(doc(db,'platform','settings'),{theme:id,updatedAt:serverTimestamp()},{merge:true});toast('主題已套用')}
 
@@ -135,7 +183,7 @@ function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{
  $('#saveTeam')&&($('#saveTeam').onclick=saveTeam); $('#newTeam')&&($('#newTeam').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-team]').forEach(b=>b.onclick=()=>{const d=S.teams.find(x=>x.id===b.dataset.loadTeam);S.edit={type:'team',id:b.dataset.loadTeam,data:d};render()}); document.querySelectorAll('[data-del-team]').forEach(b=>b.onclick=async()=>{if(confirm('刪除隊伍？')){await deleteDoc(doc(db,'teams',b.dataset.delTeam));toast('已刪除')}});
  $('#saveMember')&&($('#saveMember').onclick=saveMember); $('#newMember')&&($('#newMember').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-member]').forEach(b=>b.onclick=()=>{const d=S.members.find(x=>x.id===b.dataset.loadMember);S.edit={type:'member',id:b.dataset.loadMember,data:d};render()}); document.querySelectorAll('[data-del-member]').forEach(b=>b.onclick=async()=>{if(confirm('刪除人員？')){await deleteDoc(doc(db,'members',b.dataset.delMember));toast('已刪除')}});
  $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:d};render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}});
- document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeSet));
+ document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeSet)); $('#importLegacy')&&($('#importLegacy').onclick=()=>importLegacyTeams(true));
 }
 $('#fab').onclick=()=>{$('#quickModal').style.display='flex'}; $('#closeQuick').onclick=()=>{$('#quickModal').style.display='none'}; $('#quickModal').addEventListener('click',e=>{if(e.target.id==='quickModal')$('#quickModal').style.display='none'}); document.querySelectorAll('#quickModal [data-go]').forEach(b=>b.onclick=()=>{$('#quickModal').style.display='none';S.scoreMode=b.dataset.scoremode;go('score')});
 render();
