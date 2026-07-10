@@ -1,13 +1,17 @@
-# AMR Platform 1.0 Firebase 版
+# AMR Platform 1.0 - Sprint 1 Start
 
-已接 Firebase 專案 team-465。
+本版作為正式開發基準版。
 
-上傳到 GitHub 時請覆蓋：
-- index.html
-- js/app.js
-- css/main.css
-- assets/
-- icons/
-- manifest.json
+## 已包含
+- Firebase 連線設定
+- 淺藍企業風 UI
+- 首頁：團隊 TOP3、個人 TOP3、公告、最新積分
+- 積分：個人積分 / 團隊積分，隊伍可沿用
+- 排行榜：積分排行、人超盃、例會出席、歷史紀錄
+- QR：每週三例會、夢想起飛、夜間 COP、軟性活動
+- Portal：六大入口，點進去才看內容
+- 管理：首頁設定、公告、Portal 圖片/文字管理
+- 修正：按鈕不再造成輸入框跳掉
 
-資料會同步到 Firestore：platform / settings / amrPlatformV1。
+## GitHub 更新方式
+把本資料夾全部檔案上傳覆蓋到 team-465gogo，即可測試。
