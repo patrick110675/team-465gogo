@@ -30,6 +30,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
+const AMR_BUILD = '1.0-complete-20260711';
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
   authDomain: "team-465.firebaseapp.com",
@@ -322,11 +323,19 @@ function crudPortal(){
 }
 async function savePortal(){
   const d=S.edit?.type==='portal'?S.edit.data:{};
-  const contentImages=portalDraftImages(d);
-  const data={type:$('#portalType').value,title:$('#portalTitle').value,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:$('#portalImage').value,coverImage:$('#portalImage').value,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
-  if(!data.title)return toast('請輸入標題');
+  const title=$('#portalTitle').value.trim();
+  if(!title)return toast('請輸入標題');
   try{
-    toast('正在儲存 Portal…');
+    toast('正在整理圖片並儲存 Portal…');
+    // 舊版本可能把 base64 圖片直接塞進 Firestore；這裡會自動搬到 Storage，避免超過 1MB 文件上限。
+    const coverImage=await ensureStorageImage($('#portalImage').value,'portal-images/covers');
+    const rawImages=portalDraftImages(d).slice(0,6);
+    const contentImages=[];
+    for(let i=0;i<rawImages.length;i++){
+      toast(`正在整理內頁圖片 ${i+1}/${rawImages.length}…`);
+      contentImages.push(await ensureStorageImage(rawImages[i],'portal-images/content'));
+    }
+    const data={type:$('#portalType').value,title,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:coverImage,coverImage,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
     let targetId=S.edit?.type==='portal'?S.edit.id:null;
     if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
     await saveCollectionRecord('portals',targetId,data);
@@ -338,7 +347,10 @@ async function applyBulkPortalImages(){
   if(imgs.length!==6)return toast('請一次選擇剛好 6 張圖片');
   let items=uniquePortalItems(S.portals).slice(0,6);
   if(items.length<6){toast('Portal 項目不足 6 個，請稍後再試');return;}
-  for(let i=0;i<6;i++) await updateDoc(doc(db,'portals',items[i].id),{image:imgs[i],coverImage:imgs[i],updatedAt:serverTimestamp()});
+  for(let i=0;i<6;i++){
+    const url=await ensureStorageImage(imgs[i],'portal-images/covers');
+    await updateDoc(doc(db,'portals',items[i].id),{image:url,coverImage:url,updatedAt:serverTimestamp()});
+  }
   S.bulkPortalImages=[];toast('六張封面已依順序儲存');render();
 }
 function scoreRuleManager(){
@@ -451,17 +463,51 @@ async function compressImageFile(f,max=1600,targetBytes=850000){
   let q=.82,data=canvas.toDataURL('image/jpeg',q);while(data.length>targetBytes&&q>.35){q-=.07;data=canvas.toDataURL('image/jpeg',q)}
   if(data.length>1000000)throw new Error('圖片太大');return data;
 }
+async function ensureStorageImage(value,folder='portal-images'){
+  if(!value)return '';
+  if(!String(value).startsWith('data:image/'))return value;
+  const blob=await fetch(value).then(r=>r.blob());
+  const ext=(blob.type.split('/')[1]||'jpg').replace('jpeg','jpg');
+  const token=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2));
+  const path=`${folder}/${Date.now()}-${token}.${ext}`;
+  const snap=await uploadBytes(storageRef(storage,path),blob,{contentType:blob.type||'image/jpeg'});
+  return await getDownloadURL(snap.ref);
+}
+async function uploadCompressedImageFile(file,folder='portal-images',max=1600,targetBytes=850000){
+  const data=await compressImageFile(file,max,targetBytes);
+  return await ensureStorageImage(data,folder);
+}
 async function fileToData(input,target){
-  const f=input.files?.[0];if(!f)return;toast('圖片處理中…');
-  try{$(target).value=await compressImageFile(f);toast('圖片已加入，請按儲存 Portal')}catch(e){console.error(e);toast('圖片處理失敗，請先壓縮或裁切')}
+  const f=input.files?.[0];if(!f)return;toast('封面圖片上傳中…');
+  try{
+    const url=await uploadCompressedImageFile(f,'portal-images/covers',1600,700000);
+    $(target).value=url;
+    if(S.edit?.type==='portal'){S.edit.data.image=url;S.edit.data.coverImage=url;}
+    toast('封面圖片已上傳，請按儲存 Portal');
+  }catch(e){console.error(e);toast(`圖片上傳失敗：${e?.message||e}`)}
 }
 async function handleBulkPortalFiles(input){
-  const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');toast('正在處理六張圖片…');
-  try{S.bulkPortalImages=[];for(const f of files)S.bulkPortalImages.push(await compressImageFile(f,1200,420000));render();toast('六張圖片已完成預覽')}catch(e){console.error(e);S.bulkPortalImages=[];toast('圖片處理失敗')}
+  const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');toast('正在上傳六張封面…');
+  try{
+    S.bulkPortalImages=[];
+    for(let i=0;i<files.length;i++){
+      toast(`正在上傳第 ${i+1}/6 張…`);
+      S.bulkPortalImages.push(await uploadCompressedImageFile(files[i],'portal-images/covers',1200,420000));
+    }
+    render();toast('六張圖片已上傳，可確認順序後套用');
+  }catch(e){console.error(e);S.bulkPortalImages=[];toast(`六張圖片上傳失敗：${e?.message||e}`)}
 }
 async function handleInnerPortalFiles(input){
-  const files=[...(input.files||[])].slice(0,6);if(!files.length)return;toast('正在處理內頁圖片…');
-  try{const arr=[];for(const f of files)arr.push(await compressImageFile(f,1400,240000));if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;render();toast('內頁圖片已加入，請按儲存 Portal')}catch(e){console.error(e);toast('內頁圖片處理失敗')}
+  const files=[...(input.files||[])].slice(0,6);if(!files.length)return;toast('正在上傳內頁圖片…');
+  try{
+    const arr=[];
+    for(let i=0;i<files.length;i++){
+      toast(`正在上傳內頁圖片 ${i+1}/${files.length}…`);
+      arr.push(await uploadCompressedImageFile(files[i],'portal-images/content',1400,480000));
+    }
+    if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;
+    render();toast('內頁圖片已上傳，請按儲存 Portal');
+  }catch(e){console.error(e);toast(`內頁圖片上傳失敗：${e?.message||e}`)}
 }
 
 async function handlePortalPdfFile(input){
