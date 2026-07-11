@@ -16,7 +16,9 @@
     [data-theme="sunrise"]{--bg:#fff7ed;--bg2:#ffedd5;--card:#fff;--card2:#fffaf2;--text:#43270f;--muted:#936b4a;--primary:#f97316;--primary2:#fdba74;--accent:#38bdf8;--line:#fed7aa}
     [data-theme="carbon"]{--bg:#0e0e10;--bg2:#19191d;--card:#1b1b1f;--card2:#24242a;--text:#f5f5f5;--muted:#a1a1aa;--primary:#e5e7eb;--primary2:#71717a;--accent:#f6c453;--line:#33333a}
     *{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,var(--bg),var(--bg2));font-family:var(--font);color:var(--text);font-size:var(--bodySize);min-height:100vh}.app{max-width:980px;margin:auto;min-height:100vh;padding:14px 14px 104px}.topbar{display:flex;align-items:center;justify-content:space-between;margin:8px 2px 14px}.brand{font-weight:900;letter-spacing:.5px}.brand small{display:block;color:var(--muted);font-weight:700;font-size:13px}.bell{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.65);box-shadow:var(--shadow)}.hero{border-radius:30px;padding:24px;background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(221,241,255,.78));box-shadow:var(--shadow);position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.7)}.hero:after{content:"";position:absolute;right:-25px;bottom:-36px;width:190px;height:120px;background:radial-gradient(circle at 70% 30%,rgba(47,128,237,.20),transparent 32%),linear-gradient(135deg,transparent 30%,rgba(47,128,237,.12) 31% 45%,transparent 46%),linear-gradient(40deg,transparent 35%,rgba(47,128,237,.18) 36% 48%,transparent 49%);clip-path:polygon(0 100%,28% 35%,45% 73%,62% 20%,100% 100%);opacity:.9}.hero h1{font-size:var(--titleSize);line-height:1.05;margin:0}.hero p{margin:8px 0 0;color:var(--muted);font-weight:700}.grid{display:grid;gap:14px}.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}.card{background:rgba(255,255,255,.78);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);backdrop-filter:blur(8px)}.card.blue{background:linear-gradient(135deg,var(--card),var(--card2))}.card h2,.card h3{margin:0 0 12px}.section-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.rankItem{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:rgba(255,255,255,.58);margin:8px 0;border:1px solid rgba(120,170,210,.2)}.rankItem .medal{font-size:24px;width:34px}.rankItem b{display:block}.rankItem span{margin-left:auto;font-weight:900;color:var(--primary)}.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(47,128,237,.12);color:var(--primary);padding:6px 10px;font-weight:800;font-size:13px}.btn{border:0;border-radius:16px;padding:12px 16px;background:var(--primary);color:white;font-weight:900;cursor:pointer;box-shadow:0 8px 18px rgba(47,128,237,.22);min-height:44px}.btn.secondary{background:rgba(47,128,237,.12);color:var(--primary);box-shadow:none}.btn.ghost{background:transparent;color:var(--primary);box-shadow:none}.btn.danger{background:var(--danger)}.btn.ok{background:var(--ok)}.btn.full{width:100%}.btn.small{padding:8px 10px;border-radius:12px;min-height:34px;font-size:13px}.bottomNav{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);width:min(980px,calc(100% - 18px));background:rgba(255,255,255,.86);border:1px solid rgba(180,220,245,.8);border-radius:25px;box-shadow:0 18px 42px rgba(31,99,151,.22);display:grid;grid-template-columns:repeat(5,1fr);padding:8px;z-index:50;backdrop-filter:blur(10px)}.navBtn{border:0;background:transparent;border-radius:18px;padding:7px 4px;color:var(--muted);font-weight:900}.navBtn.active{background:rgba(47,128,237,.13);color:var(--primary)}.navBtn i{display:block;font-style:normal;font-size:21px}.fab{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:60;width:62px;height:62px;border-radius:50%;border:6px solid rgba(255,255,255,.88);background:linear-gradient(135deg,var(--primary),var(--primary2));color:white;font-size:34px;font-weight:900;box-shadow:0 16px 32px rgba(47,128,237,.32);cursor:pointer}.tabs{display:flex;gap:8px;overflow:auto;padding:4px 0 12px}.tab{white-space:nowrap;border:0;border-radius:16px;padding:11px 14px;background:rgba(255,255,255,.7);color:var(--muted);font-weight:900}.tab.active{background:var(--primary);color:white}input,select,textarea{width:100%;border:1px solid var(--line);background:rgba(255,255,255,.9);border-radius:16px;padding:12px 14px;color:var(--text);font:inherit;outline:none;min-height:44px}textarea{min-height:96px;resize:vertical}label{font-size:13px;font-weight:900;color:var(--muted);display:block;margin:10px 0 6px}.formRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.counter{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:18px;background:rgba(255,255,255,.6);border:1px solid var(--line);margin:9px 0}.counter b{font-size:14px}.counter .ctrl{display:flex;align-items:center;gap:8px}.counter strong{min-width:30px;text-align:center;font-size:18px}.scoreTotal{font-size:28px;font-weight:1000;color:var(--primary);text-align:center;padding:12px}.list{display:grid;gap:10px}.listItem{padding:12px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.65);display:flex;gap:10px;align-items:center}.listItem .grow{flex:1}.listItem p{margin:4px 0;color:var(--muted);font-size:13px}.portalGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.portalCard{min-height:150px;border-radius:26px;padding:16px;color:white;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;text-decoration:none;box-shadow:var(--shadow);background:linear-gradient(135deg,#60a5fa,#2563eb)}.portalCard:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.48));z-index:1}.portalCard img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.portalDetailImage{width:100%;height:auto;max-height:none;object-fit:contain;border-radius:22px;margin:0 0 16px;background:#fff;box-shadow:var(--shadow)}.portalGallery{display:grid;gap:12px;margin:14px 0}.portalGallery img{width:100%;height:auto;object-fit:contain;border-radius:20px;background:#fff;box-shadow:var(--shadow)}.bulkPreview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}.bulkPreview figure{margin:0}.bulkPreview img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px;border:1px solid var(--line)}.bulkPreview figcaption{font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.portalCard .pcText{position:relative;z-index:2}.portalCard b{font-size:20px;display:block}.portalCard em{font-style:normal;opacity:.9;font-size:13px}.adminLayout{display:grid;grid-template-columns:280px 1fr;gap:14px}.adminMenu{position:sticky;top:10px}.table{width:100%;border-collapse:separate;border-spacing:0 8px}.table th{text-align:left;color:var(--muted);font-size:13px}.table td{background:rgba(255,255,255,.65);padding:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.table td:first-child{border-radius:14px 0 0 14px;border-left:1px solid var(--line)}.table td:last-child{border-radius:0 14px 14px 0;border-right:1px solid var(--line)}.notice{padding:12px;border-radius:18px;background:rgba(246,196,83,.18);border:1px solid rgba(246,196,83,.38);color:var(--text)}.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--card);padding:12px 16px;border-radius:999px;z-index:99;box-shadow:var(--shadow);font-weight:900;display:none}.modal{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:80;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s ease}.modal.show{opacity:1;pointer-events:auto}.sheet{width:min(520px,100%);background:var(--card);border-radius:28px 28px 0 0;padding:18px;box-shadow:0 -14px 44px rgba(0,0,0,.22);transform:translateY(105%);transition:transform .22s ease}.modal.show .sheet{transform:translateY(0)}.empty{text-align:center;color:var(--muted);padding:24px}.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}.fileNote{font-size:12px;color:var(--muted);margin-top:4px}.hidden{display:none!important}@media(max-width:760px){.app{padding:12px 12px 104px}.grid2,.grid3,.split,.adminLayout{grid-template-columns:1fr}.hero h1{font-size:28px}.portalGrid{grid-template-columns:1fr}.adminMenu{position:static}.formRow{grid-template-columns:1fr}.card{padding:14px}.bottomNav{border-radius:22px}.navBtn{font-size:12px}.navBtn i{font-size:20px}}
-  </style>
+  
+.portalEntryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}.portalEntryCard{display:block;text-decoration:none;color:var(--text);border:1px solid var(--line);border-radius:20px;overflow:hidden;background:rgba(255,255,255,.72);box-shadow:var(--shadow)}.portalEntryCard img{width:100%;aspect-ratio:16/9;object-fit:cover;background:#eef7ff}.portalEntryCard .entryBody{padding:13px}.portalEntryCard h3{margin:0 0 5px;font-size:18px}.portalEntryCard p{margin:0;color:var(--muted);font-size:13px}.entryBadge{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(47,128,237,.12);color:var(--primary);font-size:11px;font-weight:900;margin-bottom:7px}.entryAdmin{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}@media(max-width:760px){.portalEntryGrid{grid-template-columns:1fr}}
+</style>
 </head>
 <body data-theme="sky">
 <div class="toast" id="toast"></div>
@@ -115,7 +117,7 @@ function currentWeekNumber(){
   const no=Math.floor(diff/7)+1;
   return Math.min(weeks.length,Math.max(1,no));
 }
-let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:null,scoreWeekManual:false,ruleMode:'personal',ruleEdit:null};
+let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],portalEntries:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,selectedPortalEntry:null,edit:null,entryEdit:null,entryDraftImages:[],counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:null,scoreWeekManual:false,ruleMode:'personal',ruleEdit:null};
 function col(name){return collection(db,name)}
 function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); render();},()=>{})}
 let settingsWriteDepth=0;
@@ -148,7 +150,7 @@ async function writeSettingsPatch(patch,successText='設定已儲存'){
   }finally{settingsWriteDepth=Math.max(0,settingsWriteDepth-1)}
 }
 onSnapshot(doc(db,'platform','settings'),snap=>{if(settingsWriteDepth>0)return;S.settings={...defaultSettings,...(snap.exists()?snap.data():{})};applyTheme();render();});
-['teams','members','announcements','portals','score_history','events','attendance','checkins'].forEach(n=>listen(n,n==='score_history'?'scores':n));
+['teams','members','announcements','portals','portal_entries','score_history','events','attendance','checkins'].forEach(n=>listen(n,n==='score_history'?'scores':(n==='portal_entries'?'portalEntries':n)));
 async function seedPortals(){const qs=await getDocs(col('portals')); if(qs.empty){for(const p of defaultPortals) await addDoc(col('portals'),{...p,createdAt:serverTimestamp()});}}
 setTimeout(seedPortals,1200);
 const norm=v=>String(v||'').trim().toLowerCase();
@@ -201,7 +203,7 @@ setTimeout(autoImportLegacy,1800);
 function applyTheme(){const th=S.settings.theme||'sky';document.body.dataset.theme=th==='custom'?'sky':th;document.documentElement.style.setProperty('--titleSize',(S.settings.titleSize||32)+'px');document.documentElement.style.setProperty('--bodySize',(S.settings.bodySize||16)+'px');}
 
 function nav(){const items=[['home','🏠','首頁'],['qr','📱','QR'],['ranking','🏆','排行榜'],['portal','⭐','Portal'],['admin','⚙️','管理']];$('#nav').innerHTML=items.map(([id,ic,tx])=>`<button type="button" class="navBtn ${S.page===id?'active':''}" data-go="${id}"><i>${ic}</i>${tx}</button>`).join('')}
-function go(page){S.page=page;S.selectedPortal=null; render(); window.scrollTo({top:0,behavior:'smooth'})}
+function go(page){S.page=page;S.selectedPortal=null;S.selectedPortalEntry=null; render(); window.scrollTo({top:0,behavior:'smooth'})}
 function scoresBy(){let personal={},team={}; for(const r of S.scores){if(r.deleted) continue; const n=Number(r.total||0); if(r.mode==='personal'){if(r.memberName) personal[r.memberName]=(personal[r.memberName]||0)+n;} else if(r.mode==='team'){if(r.teamName) team[r.teamName]=(team[r.teamName]||0)+n;}} return {personal,team}}
 function topList(obj,limit=3){return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,limit)}
 function rankBlock(title,arr){return `<div class="card blue"><div class="section-title"><h2>${title}</h2><button class="btn small secondary" data-go="ranking">查看</button></div>${arr.length?arr.map((x,i)=>`<div class="rankItem"><div class="medal">${['🥇','🥈','🥉'][i]||i+1}</div><b>${esc(x[0])}</b><span>${x[1]} 分</span></div>`).join(''):'<div class="empty">尚無資料</div>'}</div>`}
@@ -258,26 +260,43 @@ function checkinPage(id){const e=S.events.find(x=>x.id===id); if(!e)return `<div
 async function submitCheckin(eid){const e=S.events.find(x=>x.id===eid); const kind=$('#ckKind').value; if(kind==='member'){const mid=$('#ckMember').value; const m=S.members.find(x=>x.id===mid); if(!m)return toast('請選姓名'); await addDoc(col(e.type==='meeting'?'attendance':'checkins'),{eventId:eid,eventType:e.type,memberId:m.id,memberName:m.name,teamId:m.teamId,teamName:m.teamName||teamName(m.teamId),status:'出席',isFriend:false,createdAt:serverTimestamp()}); if(e.type!=='meeting') await addDoc(col('score_history'),{mode:'personal',teamId:m.teamId,teamName:m.teamName||teamName(m.teamId),memberId:m.id,memberName:m.name,items:[{label:typeName(e.type)+'出席',count:1,points:2,score:2}],total:2,source:'QR自動加分',deleted:false,createdAt:serverTimestamp()}); } else {const name=$('#friendName').value.trim(); if(!name)return toast('請輸入新朋友姓名'); await addDoc(col('checkins'),{eventId:eid,eventType:e.type,name,phone:$('#friendPhone').value,referrer:$('#referrer').value,isFriend:true,createdAt:serverTimestamp()}); }
  toast('簽到完成');}
 
+function entryImg(x){return x?.coverImage||x?.image||x?.imageUrl||((Array.isArray(x?.contentImages)&&x.contentImages[0])||'')}
+function portalEntriesFor(portalId){return (S.portalEntries||[]).filter(x=>x.portalId===portalId&&x.visible!==false).sort((a,b)=>Number(a.order||99)-Number(b.order||99))}
+function hasLegacyPortalContent(p){return !!(p&&(p.content||p.description||p.date||p.place||p.url||p.pdfUrl||p.youtubeUrl||(Array.isArray(p.contentImages)&&p.contentImages.length)))}
 function portal(){
   const base=S.portals.length?S.portals:defaultPortals.map((p,i)=>({id:'d'+i,...p}));
   const items=uniquePortalItems(base).filter(p=>p.visible!==false);
-  if(S.selectedPortal){const p=items.find(x=>x.id===S.selectedPortal)||S.portals.find(x=>x.id===S.selectedPortal);return portalDetail(p)}
+  if(S.selectedPortal){
+    const p=items.find(x=>x.id===S.selectedPortal)||S.portals.find(x=>x.id===S.selectedPortal);
+    if(S.selectedPortalEntry){const e=S.portalEntries.find(x=>x.id===S.selectedPortalEntry);return portalContentDetail(e,p)}
+    return portalSection(p);
+  }
   return `${header()}<div class="card" style="margin-top:14px"><h2>⭐ Portal</h2><div class="portalGrid">${items.map(p=>{const img=portalImg(p);return `<a href="#" class="portalCard" data-open-portal="${p.id}">${img?`<img src="${img}" alt="${esc(p.title)}">`:''}<div class="pcText"><b>${esc(p.icon||'⭐')} ${esc(p.title)}</b><em>${esc(p.subtitle||'')}</em></div></a>`}).join('')}</div></div>`
 }
-function portalDetail(p){
-  const cover=portalImg(p);
-  const inner=Array.isArray(p.contentImages)&&p.contentImages.length?p.contentImages:(cover?[cover]:[]);
-  const gallery=inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<img src="${src}" alt="${esc(p.title)} 圖片 ${i+1}">`).join('')}</div>`:'';
-  const date=p.date||p.time||p.eventDate||'';
-  const place=p.place||p.location||p.eventPlace||'';
-  const external=safeUrl(p.url||p.link||p.registrationUrl||'');
-  const pdf=safeUrl(p.pdfUrl||p.pdf||'');
-  const youtube=safeUrl(p.youtubeUrl||p.youtube||'');
+function portalSection(p){
+  if(!p)return `${header()}<div class="card"><button class="btn secondary" data-go="portal">← 返回 Portal</button><div class="empty">找不到專區</div></div>`;
+  const entries=portalEntriesFor(p.id);
+  const legacy=hasLegacyPortalContent(p);
+  if(!entries.length&&legacy)return portalContentDetail(p,p,true);
+  return `${header()}<div class="card" style="margin-top:14px"><button class="btn secondary" data-go="portal">← 返回 Portal</button><h2 style="margin-top:14px">${esc(p.icon||'⭐')} ${esc(p.title)}</h2><p>${esc(p.subtitle||'')}</p>${entries.length?`<div class="portalEntryGrid">${entries.map(e=>{const img=entryImg(e);return `<a href="#" class="portalEntryCard" data-open-entry="${e.id}">${img?`<img src="${img}" alt="${esc(e.title)}">`:'<div style="aspect-ratio:16/9;background:linear-gradient(135deg,#dff2ff,#b9dcff)"></div>'}<div class="entryBody"><span class="entryBadge">${esc(entryTypeName(e.type))}</span><h3>${esc(e.title)}</h3><p>${esc(e.subtitle||e.date||'')}</p></div></a>`}).join('')}</div>`:'<div class="empty">此專區尚未新增內容</div>'}${legacy?`<div class="notice" style="margin-top:16px">原本的單頁資料仍保留，可由管理中心轉成第一篇內容。</div>`:''}</div>`
+}
+function entryTypeName(t){return {activity:'圖文活動',pdf:'PDF 文件',link:'外部連結',youtube:'YouTube',article:'圖文內容'}[t]||'圖文內容'}
+function portalContentDetail(item,portal,legacy=false){
+  if(!item)return portalSection(portal);
+  const cover=entryImg(item);
+  const inner=Array.isArray(item.contentImages)&&item.contentImages.length?item.contentImages:(cover?[cover]:[]);
+  const gallery=inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<img src="${src}" alt="${esc(item.title)} 圖片 ${i+1}">`).join('')}</div>`:'';
+  const date=item.date||item.time||item.eventDate||'';
+  const place=item.place||item.location||item.eventPlace||'';
+  const external=safeUrl(item.url||item.link||item.registrationUrl||'');
+  const pdf=safeUrl(item.pdfUrl||item.pdf||'');
+  const youtube=safeUrl(item.youtubeUrl||item.youtube||'');
   let actions=[];
-  if(external) actions.push(`<a class="btn full" href="${esc(external)}" target="_blank" rel="noopener">${esc(p.buttonText||'立即報名')}</a>`);
-  if(pdf) actions.push(`<a class="btn full secondary" href="${esc(pdf)}" target="_blank" rel="noopener">📄 ${esc(p.pdfName?`開啟 ${p.pdfName}`:'開啟 PDF')}</a>`);
+  if(external) actions.push(`<a class="btn full" href="${esc(external)}" target="_blank" rel="noopener">${esc(item.buttonText||'立即前往')}</a>`);
+  if(pdf) actions.push(`<a class="btn full secondary" href="${esc(pdf)}" target="_blank" rel="noopener">📄 ${esc(item.pdfName?`開啟 ${item.pdfName}`:'開啟 PDF')}</a>`);
   if(youtube) actions.push(`<a class="btn full secondary" href="${esc(youtube)}" target="_blank" rel="noopener">▶️ 開啟 YouTube</a>`);
-  return `${header()}<div class="card" style="margin-top:14px"><button class="btn secondary" data-go="portal">← 返回 Portal</button>${gallery}<h2>${esc(p.icon||'⭐')} ${esc(p.title)}</h2><p>${esc(p.subtitle||'')}</p><div style="white-space:pre-wrap;line-height:1.8">${esc(p.content||p.description||'')}</div>${date||place?`<div class="notice" style="margin:12px 0">${date?`時間：${esc(date)}<br>`:''}${place?`地點：${esc(place)}`:''}</div>`:''}${actions.length?`<div style="display:grid;gap:10px;margin-top:14px">${actions.join('')}</div>`:''}</div>`
+  const back=legacy?'portal':null;
+  return `${header()}<div class="card" style="margin-top:14px"><button class="btn secondary" ${legacy?'data-go="portal"':'data-back-section="1"'}>← 返回${legacy?' Portal':'專區'}</button>${gallery}<h2>${esc(item.icon||portal?.icon||'⭐')} ${esc(item.title)}</h2><p>${esc(item.subtitle||'')}</p><div style="white-space:pre-wrap;line-height:1.8">${esc(item.content||item.description||'')}</div>${date||place?`<div class="notice" style="margin:12px 0">${date?`時間：${esc(date)}<br>`:''}${place?`地點：${esc(place)}`:''}</div>`:''}${actions.length?`<div style="display:grid;gap:10px;margin-top:14px">${actions.join('')}</div>`:''}</div>`
 }
 function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['rules','🧮 積分項目'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
 function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='rules')return scoreRuleManager(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
@@ -299,7 +318,7 @@ function portalDraftImages(d){
   return Array.isArray(S.portalDraftImages)?S.portalDraftImages:[];
 }
 function crudPortal(){
-  const d=S.edit?.type==='portal'?S.edit.data:{};
+  const d=S.edit?.type==='portal'?S.edit.data:(S.portalDraftForm||{});
   const inner=portalDraftImages(d);
   const ordered=uniquePortalItems(S.portals).slice(0,6);
   const bulkNames=['人力超級盃','夢想起飛＆夜間 COP','臨時帳號建立','優培制度','委任制度','考照大補帖'];
@@ -313,23 +332,24 @@ function crudPortal(){
   <label>類型</label><select id="portalType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select>
   <label>標題</label><input id="portalTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="portalSub" value="${esc(d.subtitle||'')}"><label>Icon</label><input id="portalIcon" value="${esc(d.icon||'⭐')}">
   <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。可貼圖片網址，或由下方選擇檔案。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
-  <label>內頁圖片（可一次選多張，最多 6 張）</label><div class="fileNote">點進 Portal 後會依序顯示。若沒有另外上傳，內頁會自動使用封面圖片。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
+  <label>內頁圖片（可一次選多張，最多 6 張）</label><div class="fileNote">圖片會先上傳至 Firebase Storage，再按「儲存 Portal」寫入內頁。可分次新增，總數最多 6 張。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
   <label>貼文內容</label><textarea id="portalContent" placeholder="可貼完整活動說明、段落與換行">${esc(d.content||'')}</textarea>
   <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||d.time||d.eventDate||'')}" placeholder="例如：7/17（五）18:30～20:30"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||d.location||d.eventPlace||'')}" placeholder="例如：南山干城大樓 9 樓"></div></div>
   <label>報名／外部連結</label><input id="portalUrl" value="${esc(d.url||'')}" placeholder="https://..."><label>按鈕文字</label><input id="portalButtonText" value="${esc(d.buttonText||'')}" placeholder="例如：立即報名">
   <label>PDF 檔案</label><div class="fileNote">可直接選擇 PDF 上傳，不需要先取得網址。上傳完成後會自動填入並儲存連結。</div><input type="file" id="portalPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank" rel="noopener">開啟確認</a></div>`:''}<input id="portalPdf" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="portalPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="portalYoutube" value="${esc(d.youtubeUrl||'')}">
   <div class="formRow"><div><label>排序</label><input id="portalOrder" type="number" value="${d.order||1}"></div><div><label>顯示</label><select id="portalVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div>
-  <button class="btn full" id="savePortal" type="button">儲存 Portal</button><button class="btn secondary full" id="newPortal" type="button" style="margin-top:8px">清空新增</button></div></div>`
+  <button class="btn full" id="savePortal" type="button">儲存 Portal</button><button class="btn secondary full" id="newPortal" type="button" style="margin-top:8px">清空新增</button></div></div>
+  ${S.edit?.type==='portal'?portalEntryManager(S.edit.id):'<div class="notice" style="margin-top:16px">請先選擇左側 Portal 並按「編輯」，即可管理該專區內的多篇活動、公文與內容。</div>'}`
 }
 async function savePortal(){
-  const d=S.edit?.type==='portal'?S.edit.data:{};
+  const d=S.edit?.type==='portal'?S.edit.data:(S.portalDraftForm||{});
   const title=$('#portalTitle').value.trim();
   if(!title)return toast('請輸入標題');
   try{
     toast('正在整理圖片並儲存 Portal…');
     // 舊版本可能把 base64 圖片直接塞進 Firestore；這裡會自動搬到 Storage，避免超過 1MB 文件上限。
     const coverImage=await ensureStorageImage($('#portalImage').value,'portal-images/covers');
-    const rawImages=portalDraftImages(d).slice(0,6);
+    const rawImages=portalDraftImages(d).flat(Infinity).filter(v=>typeof v==='string'&&v).slice(0,6);
     const contentImages=[];
     for(let i=0;i<rawImages.length;i++){
       toast(`正在整理內頁圖片 ${i+1}/${rawImages.length}…`);
@@ -339,7 +359,7 @@ async function savePortal(){
     let targetId=S.edit?.type==='portal'?S.edit.id:null;
     if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
     await saveCollectionRecord('portals',targetId,data);
-    S.edit=null;S.portalDraftImages=[];render();toast('Portal 內容已儲存');
+    S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.portalDraftImages=[];S.portalDraftForm=null;render();toast('Portal 內容已儲存');
   }catch(e){console.error(e);toast(`Portal 儲存失敗：${e?.message||e}`)}
 }
 async function applyBulkPortalImages(){
@@ -353,6 +373,21 @@ async function applyBulkPortalImages(){
   }
   S.bulkPortalImages=[];toast('六張封面已依順序儲存');render();
 }
+function entryDraftImages(d){return S.entryEdit&&Array.isArray(S.entryEdit.data?.contentImages)?S.entryEdit.data.contentImages:(Array.isArray(S.entryDraftImages)?S.entryDraftImages:[])}
+function portalEntryManager(portalId){
+  const portal=S.portals.find(x=>x.id===portalId);
+  const entries=(S.portalEntries||[]).filter(x=>x.portalId===portalId).sort((a,b)=>Number(a.order||99)-Number(b.order||99));
+  const d=S.entryEdit?.data||{};
+  const imgs=entryDraftImages(d);
+  return `<div class="entryAdmin"><h2>📚 ${esc(portal?.title||'Portal')}｜專區內容</h2><div class="notice">此專區可以新增多篇活動、公文、圖片貼文、外部連結或 YouTube。每篇內容彼此獨立，可單獨修改、隱藏或刪除。</div><div class="split" style="margin-top:14px"><div>${entries.map(e=>`<div class="listItem"><div class="grow"><b>${esc(e.title)}</b><p>${entryTypeName(e.type)}｜${e.visible===false?'隱藏':'顯示'}｜排序 ${e.order||''}</p></div><button class="btn small secondary" data-load-entry="${e.id}">編輯</button><button class="btn small danger" data-del-entry="${e.id}">刪除</button></div>`).join('')||'<div class="empty">尚無內容，請在右側新增第一篇。</div>'}</div><div><h3>${S.entryEdit?'編輯內容':'新增內容'}</h3><label>內容類型</label><select id="entryType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="article" ${d.type==='article'?'selected':''}>圖文內容</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select><label>標題</label><input id="entryTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="entrySub" value="${esc(d.subtitle||'')}"><label>封面圖片</label><input id="entryCover" value="${esc(entryImg(d))}">${entryImg(d)?`<img src="${entryImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="entryCoverFile" accept="image/*"><label>內頁圖片（最多 6 張）</label>${imgs.length?`<div class="portalGallery">${imgs.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-entry-image="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="entryInnerFiles" accept="image/*" multiple><label>貼文內容</label><textarea id="entryContent">${esc(d.content||'')}</textarea><div class="formRow"><div><label>時間</label><input id="entryDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="entryPlace" value="${esc(d.place||'')}"></div></div><label>報名／外部連結</label><input id="entryUrl" value="${esc(d.url||'')}"><label>按鈕文字</label><input id="entryButton" value="${esc(d.buttonText||'')}"><label>PDF 檔案</label><input type="file" id="entryPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank">開啟確認</a></div>`:''}<input id="entryPdfUrl" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="entryPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="entryYoutube" value="${esc(d.youtubeUrl||'')}"><div class="formRow"><div><label>排序</label><input id="entryOrder" type="number" value="${Number(d.order||entries.length+1)}"></div><div><label>顯示</label><select id="entryVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div><button class="btn full" id="saveEntry" type="button">儲存專區內容</button><button class="btn secondary full" id="newEntry" type="button" style="margin-top:8px">清空新增下一篇</button></div></div></div>`
+}
+async function savePortalEntry(){
+  if(!S.edit?.id)return toast('請先選擇 Portal');
+  const title=$('#entryTitle').value.trim();if(!title)return toast('請輸入內容標題');
+  try{toast('正在儲存專區內容…');const coverImage=await ensureStorageImage($('#entryCover').value,'portal-entry-images/covers');const raw=entryDraftImages(S.entryEdit?.data||{}).flat(Infinity).filter(v=>typeof v==='string'&&v).slice(0,6);const contentImages=[];for(let i=0;i<raw.length;i++)contentImages.push(await ensureStorageImage(raw[i],'portal-entry-images/content'));const data={portalId:S.edit.id,portalTitle:S.edit.data.title,type:$('#entryType').value,title,subtitle:$('#entrySub').value,coverImage,image:coverImage,contentImages,content:$('#entryContent').value,date:$('#entryDate').value,place:$('#entryPlace').value,url:safeUrl($('#entryUrl').value),buttonText:$('#entryButton').value,pdfUrl:$('#entryPdfUrl').value,pdfName:$('#entryPdfName').value,youtubeUrl:safeUrl($('#entryYoutube').value),order:Number($('#entryOrder').value||99),visible:$('#entryVisible').value==='true',updatedAt:serverTimestamp()};await saveCollectionRecord('portal_entries',S.entryEdit?.id||null,data);S.entryEdit=null;S.entryDraftImages=[];render();toast('專區內容已儲存')}catch(e){console.error(e);toast(`內容儲存失敗：${e?.message||e}`)}}
+async function handleEntryCover(input){const f=input.files?.[0];if(!f)return;try{const url=await uploadCompressedImageFile(f,'portal-entry-images/covers',1600,700000);$('#entryCover').value=url;if(S.entryEdit)S.entryEdit.data.coverImage=url;toast('封面已上傳，請按儲存專區內容')}catch(e){toast(`封面上傳失敗：${e?.message||e}`)}}
+async function handleEntryInner(input){const files=[...(input.files||[])];if(!files.length)return;const current=[...entryDraftImages(S.entryEdit?.data||{})];if(current.length+files.length>6)return toast('每篇內容最多 6 張圖片');try{const up=[];for(const f of files)up.push(await uploadCompressedImageFile(f,'portal-entry-images/content',1600,700000));const merged=[...current,...up].slice(0,6);if(S.entryEdit)S.entryEdit.data.contentImages=merged;else S.entryDraftImages=merged;render();toast('內頁圖片已上傳，請按儲存專區內容')}catch(e){toast(`圖片上傳失敗：${e?.message||e}`)}}
+async function handleEntryPdf(input){const file=input.files?.[0];if(!file)return;try{toast('PDF 上傳中…');const safeName=file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g,'_');const path=`portal-entry-pdfs/${Date.now()}-${safeName}`;const snap=await uploadBytes(storageRef(storage,path),file,{contentType:'application/pdf'});const url=await getDownloadURL(snap.ref);if(S.entryEdit){S.entryEdit.data.pdfUrl=url;S.entryEdit.data.pdfName=file.name}else{S.entryEdit={id:null,data:{pdfUrl:url,pdfName:file.name,contentImages:[...S.entryDraftImages]}}}render();toast('PDF 已上傳，請按儲存專區內容')}catch(e){toast(`PDF 上傳失敗：${e?.message||e}`)}}
 function scoreRuleManager(){
   const mode=S.ruleMode||'personal';
   const rules=activeScoreRules()[mode];
@@ -497,17 +532,58 @@ async function handleBulkPortalFiles(input){
     render();toast('六張圖片已上傳，可確認順序後套用');
   }catch(e){console.error(e);S.bulkPortalImages=[];toast(`六張圖片上傳失敗：${e?.message||e}`)}
 }
+function snapshotPortalForm(){
+  const get=(id,fb='')=>document.querySelector(id)?.value ?? fb;
+  return {
+    type:get('#portalType','activity'),
+    title:get('#portalTitle',''),
+    subtitle:get('#portalSub',''),
+    icon:get('#portalIcon','⭐'),
+    image:get('#portalImage',''),
+    coverImage:get('#portalImage',''),
+    content:get('#portalContent',''),
+    date:get('#portalDate',''), time:get('#portalDate',''), eventDate:get('#portalDate',''),
+    place:get('#portalPlace',''), location:get('#portalPlace',''), eventPlace:get('#portalPlace',''),
+    url:get('#portalUrl',''), link:get('#portalUrl',''), registrationUrl:get('#portalUrl',''),
+    buttonText:get('#portalButtonText',''),
+    pdfUrl:get('#portalPdf',''), pdfName:get('#portalPdfName',''),
+    youtubeUrl:get('#portalYoutube',''),
+    order:Number(get('#portalOrder','1')||1),
+    visible:get('#portalVisible','true')==='true'
+  };
+}
 async function handleInnerPortalFiles(input){
-  const files=[...(input.files||[])].slice(0,6);if(!files.length)return;toast('正在上傳內頁圖片…');
+  const selected=[...(input.files||[])];
+  if(!selected.length)return;
+  const current=[...portalDraftImages(S.edit?.data||{})];
+  const room=Math.max(0,6-current.length);
+  if(room===0){toast('內頁圖片最多 6 張，請先刪除一張再新增');input.value='';return;}
+  const files=selected.slice(0,room);
+  const form=snapshotPortalForm();
+  input.disabled=true;
   try{
-    const arr=[];
+    toast(`正在上傳 ${files.length} 張內頁圖片…`);
+    const uploaded=[];
     for(let i=0;i<files.length;i++){
       toast(`正在上傳內頁圖片 ${i+1}/${files.length}…`);
-      arr.push(await uploadCompressedImageFile(files[i],'portal-images/content',1400,480000));
+      uploaded.push(await uploadCompressedImageFile(files[i],'portal-images/content',1600,700000));
     }
-    if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;
-    render();toast('內頁圖片已上傳，請按儲存 Portal');
-  }catch(e){console.error(e);toast(`內頁圖片上傳失敗：${e?.message||e}`)}
+    const merged=[...current,...uploaded].filter(v=>typeof v==='string'&&v).slice(0,6);
+    if(S.edit?.type==='portal'){
+      S.edit.data={...S.edit.data,...form,contentImages:merged};
+    }else{
+      S.portalDraftImages=merged;
+      S.portalDraftForm={...(S.portalDraftForm||{}),...form};
+    }
+    render();
+    toast(`已上傳 ${uploaded.length} 張內頁圖片，請按「儲存 Portal」完成`);
+  }catch(e){
+    console.error('handleInnerPortalFiles failed',e);
+    toast(`內頁圖片上傳失敗：${e?.code||''} ${e?.message||e}`);
+  }finally{
+    input.disabled=false;
+    input.value='';
+  }
 }
 
 async function handlePortalPdfFile(input){
@@ -529,16 +605,16 @@ async function handlePortalPdfFile(input){
   }catch(e){console.error(e);toast('PDF 上傳失敗，請確認 Firebase Storage 規則');}
 }
 function render(){nav(); const check=new URLSearchParams(location.search).get('checkin'); if(check){app.innerHTML=checkinPage(check); bind(); return;} if(S.page==='home') app.innerHTML=home(); if(S.page==='score') app.innerHTML=scorePage(); if(S.page==='qr') app.innerHTML=qr(); if(S.page==='ranking') app.innerHTML=ranking(); if(S.page==='portal') app.innerHTML=portal(); if(S.page==='admin') app.innerHTML=admin(); bind();}
-function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule))); document.querySelectorAll('[data-restore-rule]').forEach(b=>b.onclick=()=>restoreScoreRule(Number(b.dataset.restoreRule)));
+function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;S.entryEdit=null;S.entryDraftImages=[];render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule))); document.querySelectorAll('[data-restore-rule]').forEach(b=>b.onclick=()=>restoreScoreRule(Number(b.dataset.restoreRule)));
  $('#manualWeekToggle')&&($('#manualWeekToggle').onchange=e=>{S.scoreWeekManual=e.target.checked;S.scoreWeek=S.scoreWeekManual?(S.scoreWeek||currentWeekNumber()):currentWeekNumber();render()}); $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeekManual=true;S.scoreWeek=Number(e.target.value||currentWeekNumber())}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings);
  document.querySelectorAll('[data-edit-score]').forEach(b=>b.onclick=()=>editScore(b.dataset.editScore)); document.querySelectorAll('[data-del-score]').forEach(b=>b.onclick=()=>delScore(b.dataset.delScore));
  $('#createEvent')&&($('#createEvent').onclick=createEvent); document.querySelectorAll('[data-del-event]').forEach(b=>b.onclick=async()=>{if(confirm('刪除活動？')){await deleteDoc(doc(db,'events',b.dataset.delEvent));toast('已刪除')}});
  $('#ckKind')&&($('#ckKind').onchange=e=>{$('#memberFields').classList.toggle('hidden',e.target.value==='friend');$('#friendFields').classList.toggle('hidden',e.target.value!=='friend')}); $('#ckTeam')&&($('#ckTeam').onchange=e=>{const mems=S.members.filter(m=>m.teamId===e.target.value);$('#ckMember').innerHTML='<option value="">請選姓名</option>'+mems.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}); $('#submitCheckin')&&($('#submitCheckin').onclick=e=>submitCheckin(e.currentTarget.dataset.eid));
- document.querySelectorAll('[data-open-portal]').forEach(b=>b.onclick=e=>{e.preventDefault();S.selectedPortal=b.dataset.openPortal;render()});
+ document.querySelectorAll('[data-open-portal]').forEach(b=>b.onclick=e=>{e.preventDefault();S.selectedPortal=b.dataset.openPortal;render()}); document.querySelectorAll('[data-open-entry]').forEach(b=>b.onclick=e=>{e.preventDefault();S.selectedPortalEntry=b.dataset.openEntry;render()}); document.querySelectorAll('[data-back-section]').forEach(b=>b.onclick=()=>{S.selectedPortalEntry=null;render()});
  $('#saveSettings')&&($('#saveSettings').onclick=saveSettings); $('#saveAnn')&&($('#saveAnn').onclick=saveAnn); $('#newAnn')&&($('#newAnn').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-ann]').forEach(b=>b.onclick=()=>{const d=S.announcements.find(x=>x.id===b.dataset.loadAnn);S.edit={type:'ann',id:b.dataset.loadAnn,data:d};render()}); document.querySelectorAll('[data-del-ann]').forEach(b=>b.onclick=async()=>{if(confirm('刪除公告？')){await deleteDoc(doc(db,'announcements',b.dataset.delAnn));toast('已刪除')}});
  $('#saveTeam')&&($('#saveTeam').onclick=saveTeam); $('#newTeam')&&($('#newTeam').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-team]').forEach(b=>b.onclick=()=>{const d=S.teams.find(x=>x.id===b.dataset.loadTeam);S.edit={type:'team',id:b.dataset.loadTeam,data:d};render()}); document.querySelectorAll('[data-del-team]').forEach(b=>b.onclick=async()=>{if(confirm('刪除隊伍？')){await deleteDoc(doc(db,'teams',b.dataset.delTeam));toast('已刪除')}});
  $('#saveMember')&&($('#saveMember').onclick=saveMember); $('#newMember')&&($('#newMember').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-member]').forEach(b=>b.onclick=()=>{const d=S.members.find(x=>x.id===b.dataset.loadMember);S.edit={type:'member',id:b.dataset.loadMember,data:d};render()}); document.querySelectorAll('[data-del-member]').forEach(b=>b.onclick=async()=>{if(confirm('刪除人員？')){await deleteDoc(doc(db,'members',b.dataset.delMember));toast('已刪除')}});
- $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;S.portalDraftImages=[];render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); $('#bulkPortalFiles')&&($('#bulkPortalFiles').onchange=e=>handleBulkPortalFiles(e.target)); $('#applyBulkPortal')&&($('#applyBulkPortal').onclick=applyBulkPortalImages); $('#portalInnerFiles')&&($('#portalInnerFiles').onchange=e=>handleInnerPortalFiles(e.target)); $('#portalPdfFile')&&($('#portalPdfFile').onchange=e=>handlePortalPdfFile(e.target)); document.querySelectorAll('[data-remove-inner]').forEach(b=>b.onclick=()=>{const arr=[...portalDraftImages(S.edit?.data||{})];arr.splice(Number(b.dataset.removeInner),1);if(S.edit?.type==='portal')S.edit.data.contentImages=arr;else S.portalDraftImages=arr;render()}); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.portalDraftImages=[];render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}});
+ $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.portalDraftImages=[];S.portalDraftForm=null;render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); $('#bulkPortalFiles')&&($('#bulkPortalFiles').onchange=e=>handleBulkPortalFiles(e.target)); $('#applyBulkPortal')&&($('#applyBulkPortal').onclick=applyBulkPortalImages); $('#portalInnerFiles')&&($('#portalInnerFiles').onchange=e=>handleInnerPortalFiles(e.target)); $('#portalPdfFile')&&($('#portalPdfFile').onchange=e=>handlePortalPdfFile(e.target)); document.querySelectorAll('[data-remove-inner]').forEach(b=>b.onclick=()=>{const arr=[...portalDraftImages(S.edit?.data||{})];arr.splice(Number(b.dataset.removeInner),1);if(S.edit?.type==='portal')S.edit.data.contentImages=arr;else S.portalDraftImages=arr;render()}); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.entryEdit=null;S.entryDraftImages=[];S.portalDraftImages=[];render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}}); $('#saveEntry')&&($('#saveEntry').onclick=savePortalEntry); $('#newEntry')&&($('#newEntry').onclick=()=>{S.entryEdit=null;S.entryDraftImages=[];render()}); $('#entryCoverFile')&&($('#entryCoverFile').onchange=e=>handleEntryCover(e.target)); $('#entryInnerFiles')&&($('#entryInnerFiles').onchange=e=>handleEntryInner(e.target)); $('#entryPdfFile')&&($('#entryPdfFile').onchange=e=>handleEntryPdf(e.target)); document.querySelectorAll('[data-load-entry]').forEach(b=>b.onclick=()=>{const d=S.portalEntries.find(x=>x.id===b.dataset.loadEntry);S.entryEdit={id:d.id,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.entryDraftImages=[];render()}); document.querySelectorAll('[data-del-entry]').forEach(b=>b.onclick=async()=>{if(confirm('刪除此篇專區內容？')){await deleteDoc(doc(db,'portal_entries',b.dataset.delEntry));S.entryEdit=null;toast('已刪除')}}); document.querySelectorAll('[data-remove-entry-image]').forEach(b=>b.onclick=()=>{const arr=[...entryDraftImages(S.entryEdit?.data||{})];arr.splice(Number(b.dataset.removeEntryImage),1);if(S.entryEdit)S.entryEdit.data.contentImages=arr;else S.entryDraftImages=arr;render()});
  document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeSet)); $('#importLegacy')&&($('#importLegacy').onclick=()=>importLegacyTeams(true));
 }
 const closeQuickModal=()=>$('#quickModal').classList.remove('show'); $('#fab').onclick=()=>$('#quickModal').classList.add('show'); $('#closeQuick').onclick=closeQuickModal; $('#quickModal').addEventListener('click',e=>{if(e.target.id==='quickModal')closeQuickModal()}); document.querySelectorAll('#quickModal [data-go]').forEach(b=>b.onclick=()=>{closeQuickModal();S.scoreMode=b.dataset.scoremode;setTimeout(()=>go('score'),180)});
