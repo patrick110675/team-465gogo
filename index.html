@@ -120,13 +120,29 @@ function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({
 let settingsWriteDepth=0;
 function stableValue(v){if(v===undefined)return null;if(Array.isArray(v))return v.map(stableValue);if(v&&typeof v==='object'){const out={};Object.keys(v).sort().forEach(k=>{if(k!=='updatedAt')out[k]=stableValue(v[k])});return out}return v}
 function sameValue(a,b){return JSON.stringify(stableValue(a))===JSON.stringify(stableValue(b))}
+function scoreRulesForFirestore(rules){
+  const one=arr=>(arr||[]).map((r,i)=>Array.isArray(r)?{key:String(r[0]||`rule_${i+1}`),label:String(r[1]||'未命名項目'),points:Number(r[2]||0)}:{key:String(r?.key||`rule_${i+1}`),label:String(r?.label||'未命名項目'),points:Number(r?.points||0)});
+  return {personal:one(rules?.personal),team:one(rules?.team)};
+}
+function patchForFirestore(patch){
+  const out={...patch};
+  if(out.scoreRules) out.scoreRules=scoreRulesForFirestore(out.scoreRules);
+  if(Array.isArray(out.deletedScoreRules)) out.deletedScoreRules=out.deletedScoreRules.map((x,i)=>({
+    mode:String(x?.mode||'personal'),
+    item:Array.isArray(x?.item)?{key:String(x.item[0]||`deleted_${i+1}`),label:String(x.item[1]||'未命名項目'),points:Number(x.item[2]||0)}:{key:String(x?.item?.key||`deleted_${i+1}`),label:String(x?.item?.label||'未命名項目'),points:Number(x?.item?.points||0)},
+    deletedAt:Number(x?.deletedAt||Date.now())
+  }));
+  return out;
+}
 async function writeSettingsPatch(patch,successText='設定已儲存'){
   settingsWriteDepth++;
   try{
     const ref=doc(db,'platform','settings');
-    await runTransaction(db,async tx=>{const snap=await tx.get(ref);const current=snap.exists()?snap.data():{};tx.set(ref,{...current,...patch,updatedAt:serverTimestamp()},{merge:false})});
+    const firestorePatch=patchForFirestore(patch);
+    // 只合併本次變更，不重寫整份舊 settings，避免舊資料中的巢狀陣列造成 Firestore 拒絕寫入。
+    await setDoc(ref,{...firestorePatch,updatedAt:serverTimestamp()},{merge:true});
     const verify=await getDoc(ref);if(!verify.exists())throw new Error('Firebase 找不到設定文件');const server=verify.data();
-    for(const [k,v] of Object.entries(patch)){if(!sameValue(server[k],v))throw new Error(`欄位 ${k} 儲存後驗證不一致`)}
+    for(const [k,v] of Object.entries(firestorePatch)){if(!sameValue(server[k],v))throw new Error(`欄位 ${k} 儲存後驗證不一致`)}
     S.settings={...defaultSettings,...server};applyTheme();render();toast(successText);return server;
   }finally{settingsWriteDepth=Math.max(0,settingsWriteDepth-1)}
 }
@@ -333,7 +349,7 @@ function scoreRuleManager(){
   <div class="notice">可直接修改項目名稱與分數，也可以新增或刪除。儲存後，所有手機的計分頁會自動更新。</div>
   <div class="tabs" style="margin-top:12px"><button class="tab ${mode==='personal'?'active':''}" data-rulemode="personal">👤 個人積分項目</button><button class="tab ${mode==='team'?'active':''}" data-rulemode="team">👥 團隊積分項目</button></div>
   <div class="split"><div>${rules.map((r,i)=>`<div class="listItem"><div class="grow"><b>${esc(r[1])}</b><p>${Number(r[2]||0)} 分｜代碼 ${esc(r[0])}</p></div><button class="btn small secondary" data-edit-rule="${i}">編輯</button><button class="btn small danger" data-del-rule="${i}">刪除</button></div>`).join('')||'<div class="empty">尚無積分項目</div>'}
-  <div style="margin-top:16px"><h3>🗑️ 最近刪除</h3>${(S.settings.deletedScoreRules||[]).filter(x=>x.mode===mode).length?(S.settings.deletedScoreRules||[]).filter(x=>x.mode===mode).map((x,i)=>`<div class="listItem"><div class="grow"><b>${esc(x.item?.[1]||'未命名項目')}</b><p>${Number(x.item?.[2]||0)} 分｜可復原</p></div><button class="btn small ok" data-restore-rule="${i}">復原</button></div>`).join(''):'<div class="empty">沒有可復原的項目</div>'}</div></div>
+  <div style="margin-top:16px"><h3>🗑️ 最近刪除</h3>${(S.settings.deletedScoreRules||[]).filter(x=>x.mode===mode).length?(S.settings.deletedScoreRules||[]).filter(x=>x.mode===mode).map((x,i)=>`<div class="listItem"><div class="grow"><b>${esc(Array.isArray(x.item)?x.item?.[1]:(x.item?.label||'未命名項目'))}</b><p>${Number(Array.isArray(x.item)?x.item?.[2]:(x.item?.points||0))} 分｜可復原</p></div><button class="btn small ok" data-restore-rule="${i}">復原</button></div>`).join(''):'<div class="empty">沒有可復原的項目</div>'}</div></div>
   <div><h3>${d.index!=null?'編輯':'新增'}項目</h3><label>項目名稱</label><input id="ruleLabel" value="${esc(d.label||'')}"><label>每次分數</label><input id="rulePoints" type="number" step="1" value="${d.points??''}"><label>項目代碼</label><input id="ruleKey" value="${esc(d.key||'')}" placeholder="可留空自動產生"><button class="btn full" id="saveRule" type="button">儲存積分項目</button><button class="btn secondary full" id="newRule" type="button" style="margin-top:8px">清空新增</button>
   <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>週數設定</h3><label>第一週開始日期</label><input id="ruleBaseStart" type="date" value="${esc(S.settings.baseStart||'2026-07-06')}"><label>競賽總週數</label><input id="ruleWeekCount" type="number" min="1" max="53" value="${Number(S.settings.weekCount||26)}"><button class="btn secondary full" id="saveWeekSettings" type="button">儲存週數設定</button></div></div>`;
 }
@@ -393,8 +409,8 @@ async function restoreScoreRule(filteredIndex){
     if(!target)return toast('找不到可復原項目');
     const all=activeScoreRules();
     const arr=all[mode].map(x=>[...x]);
-    const restored=[...(target.item||[])];
-    if(!restored.length)return toast('復原資料不完整');
+    const restored=Array.isArray(target.item)?[...target.item]:[target.item?.key,target.item?.label,Number(target.item?.points||0)];
+    if(!restored[0]||!restored[1])return toast('復原資料不完整');
     if(arr.some(x=>x[0]===restored[0])) restored[0]=`${restored[0]}_restored_${Date.now()}`;
     arr.push(restored);
     all[mode]=arr;
