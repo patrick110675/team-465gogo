@@ -295,8 +295,8 @@ function crudPortal(){
   <div class="split"><div>${S.portals.sort((a,b)=>(a.order||99)-(b.order||99)).map(p=>`<div class="listItem"><div class="grow"><b>${esc(p.title)}</b><p>${p.visible===false?'隱藏':'顯示'}｜排序 ${p.order||''}｜${esc(p.type||'')}</p></div><button class="btn small secondary" data-load-portal="${p.id}">編輯</button><button class="btn small danger" data-del-portal="${p.id}">刪除</button></div>`).join('')||'<div class="empty">尚無 Portal</div>'}</div><div>
   <label>類型</label><select id="portalType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select>
   <label>標題</label><input id="portalTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="portalSub" value="${esc(d.subtitle||'')}"><label>Icon</label><input id="portalIcon" value="${esc(d.icon||'⭐')}">
-  <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。可貼圖片網址，或由下方選擇檔案。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
-  <label>內頁圖片（可一次選多張，最多 6 張）</label><div class="fileNote">點進 Portal 後會依序顯示。若沒有另外上傳，內頁會自動使用封面圖片。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
+  <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。選擇檔案後會上傳至 Firebase Storage，Firestore 只保存網址，避免超過容量限制。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
+  <label>內頁圖片（可一次選多張，最多 6 張）</label><div class="fileNote">點進 Portal 後會依序顯示。最多 6 張，圖片會存到 Firebase Storage；若沒有另外上傳，內頁會自動使用封面圖片。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
   <label>貼文內容</label><textarea id="portalContent" placeholder="可貼完整活動說明、段落與換行">${esc(d.content||'')}</textarea>
   <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||d.time||d.eventDate||'')}" placeholder="例如：7/17（五）18:30～20:30"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||d.location||d.eventPlace||'')}" placeholder="例如：南山干城大樓 9 樓"></div></div>
   <label>報名／外部連結</label><input id="portalUrl" value="${esc(d.url||'')}" placeholder="https://..."><label>按鈕文字</label><input id="portalButtonText" value="${esc(d.buttonText||'')}" placeholder="例如：立即報名">
@@ -306,11 +306,19 @@ function crudPortal(){
 }
 async function savePortal(){
   const d=S.edit?.type==='portal'?S.edit.data:{};
-  const contentImages=portalDraftImages(d);
-  const data={type:$('#portalType').value,title:$('#portalTitle').value,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:$('#portalImage').value,coverImage:$('#portalImage').value,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
-  if(!data.title)return toast('請輸入標題');
+  const title=$('#portalTitle').value.trim();
+  if(!title)return toast('請輸入標題');
   try{
-    toast('正在儲存 Portal…');
+    toast('正在整理圖片並儲存 Portal…');
+    // 舊版本可能把 base64 圖片直接塞進 Firestore；這裡會自動搬到 Storage，避免超過 1MB 文件上限。
+    const coverImage=await ensureStorageImage($('#portalImage').value,'portal-images/covers');
+    const rawImages=portalDraftImages(d).slice(0,6);
+    const contentImages=[];
+    for(let i=0;i<rawImages.length;i++){
+      toast(`正在整理內頁圖片 ${i+1}/${rawImages.length}…`);
+      contentImages.push(await ensureStorageImage(rawImages[i],'portal-images/content'));
+    }
+    const data={type:$('#portalType').value,title,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:coverImage,coverImage,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
     let targetId=S.edit?.type==='portal'?S.edit.id:null;
     if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
     await saveCollectionRecord('portals',targetId,data);
@@ -322,7 +330,10 @@ async function applyBulkPortalImages(){
   if(imgs.length!==6)return toast('請一次選擇剛好 6 張圖片');
   let items=uniquePortalItems(S.portals).slice(0,6);
   if(items.length<6){toast('Portal 項目不足 6 個，請稍後再試');return;}
-  for(let i=0;i<6;i++) await updateDoc(doc(db,'portals',items[i].id),{image:imgs[i],coverImage:imgs[i],updatedAt:serverTimestamp()});
+  for(let i=0;i<6;i++){
+    const url=await ensureStorageImage(imgs[i],'portal-images/covers');
+    await updateDoc(doc(db,'portals',items[i].id),{image:url,coverImage:url,updatedAt:serverTimestamp()});
+  }
   S.bulkPortalImages=[];toast('六張封面已依順序儲存');render();
 }
 function scoreRuleManager(){
@@ -435,17 +446,51 @@ async function compressImageFile(f,max=1600,targetBytes=850000){
   let q=.82,data=canvas.toDataURL('image/jpeg',q);while(data.length>targetBytes&&q>.35){q-=.07;data=canvas.toDataURL('image/jpeg',q)}
   if(data.length>1000000)throw new Error('圖片太大');return data;
 }
+async function ensureStorageImage(value,folder='portal-images'){
+  if(!value)return '';
+  if(!String(value).startsWith('data:image/'))return value;
+  const blob=await fetch(value).then(r=>r.blob());
+  const ext=(blob.type.split('/')[1]||'jpg').replace('jpeg','jpg');
+  const token=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2));
+  const path=`${folder}/${Date.now()}-${token}.${ext}`;
+  const snap=await uploadBytes(storageRef(storage,path),blob,{contentType:blob.type||'image/jpeg'});
+  return await getDownloadURL(snap.ref);
+}
+async function uploadCompressedImageFile(file,folder='portal-images',max=1600,targetBytes=850000){
+  const data=await compressImageFile(file,max,targetBytes);
+  return await ensureStorageImage(data,folder);
+}
 async function fileToData(input,target){
-  const f=input.files?.[0];if(!f)return;toast('圖片處理中…');
-  try{$(target).value=await compressImageFile(f);toast('圖片已加入，請按儲存 Portal')}catch(e){console.error(e);toast('圖片處理失敗，請先壓縮或裁切')}
+  const f=input.files?.[0];if(!f)return;toast('封面圖片上傳中…');
+  try{
+    const url=await uploadCompressedImageFile(f,'portal-images/covers',1600,700000);
+    $(target).value=url;
+    if(S.edit?.type==='portal'){S.edit.data.image=url;S.edit.data.coverImage=url;}
+    toast('封面圖片已上傳，請按儲存 Portal');
+  }catch(e){console.error(e);toast(`圖片上傳失敗：${e?.message||e}`)}
 }
 async function handleBulkPortalFiles(input){
-  const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');toast('正在處理六張圖片…');
-  try{S.bulkPortalImages=[];for(const f of files)S.bulkPortalImages.push(await compressImageFile(f,1200,420000));render();toast('六張圖片已完成預覽')}catch(e){console.error(e);S.bulkPortalImages=[];toast('圖片處理失敗')}
+  const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');toast('正在上傳六張封面…');
+  try{
+    S.bulkPortalImages=[];
+    for(let i=0;i<files.length;i++){
+      toast(`正在上傳第 ${i+1}/6 張…`);
+      S.bulkPortalImages.push(await uploadCompressedImageFile(files[i],'portal-images/covers',1200,420000));
+    }
+    render();toast('六張圖片已上傳，可確認順序後套用');
+  }catch(e){console.error(e);S.bulkPortalImages=[];toast(`六張圖片上傳失敗：${e?.message||e}`)}
 }
 async function handleInnerPortalFiles(input){
-  const files=[...(input.files||[])].slice(0,6);if(!files.length)return;toast('正在處理內頁圖片…');
-  try{const arr=[];for(const f of files)arr.push(await compressImageFile(f,1400,240000));if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;render();toast('內頁圖片已加入，請按儲存 Portal')}catch(e){console.error(e);toast('內頁圖片處理失敗')}
+  const files=[...(input.files||[])].slice(0,6);if(!files.length)return;toast('正在上傳內頁圖片…');
+  try{
+    const arr=[];
+    for(let i=0;i<files.length;i++){
+      toast(`正在上傳內頁圖片 ${i+1}/${files.length}…`);
+      arr.push(await uploadCompressedImageFile(files[i],'portal-images/content',1400,480000));
+    }
+    if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;
+    render();toast('內頁圖片已上傳，請按儲存 Portal');
+  }catch(e){console.error(e);toast(`內頁圖片上傳失敗：${e?.message||e}`)}
 }
 
 async function handlePortalPdfFile(input){

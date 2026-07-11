@@ -1,13 +1,18 @@
-# AMR 個人／團隊積分分離修正版
+# AMR Platform 1.0 — Portal Storage 修正版
 
-修正內容：
-- 個人積分只計入個人排行榜。
-- 團隊積分只計入團隊排行榜。
-- 輸入個人積分後，團隊 TOP3 不會再同步增加。
-- 原本已存在的個人積分紀錄不會被刪除，只是不再納入團隊總分。
+## 修正內容
+- 修正 Portal 儲存時 Firestore 文件超過 1MB 的錯誤。
+- 封面圖片、六張內頁圖片改存 Firebase Storage。
+- Firestore 只保存圖片下載網址，不再保存 Base64 圖片字串。
+- 舊版已存在的 Base64 圖片，在再次儲存 Portal 時會自動搬移到 Storage。
+- PDF 仍維持上傳到 Firebase Storage。
 
-更新方式：
-1. 解壓縮 ZIP。
-2. 用新版 `index.html` 覆蓋 GitHub 專案根目錄的同名檔案。
-3. Commit changes。
-4. 等 GitHub Pages 更新後重新整理頁面。
+## 更新方式
+將 `index.html` 覆蓋 GitHub 專案根目錄的同名檔案並 Commit。
+
+## 測試
+1. 管理 → Portal → 編輯一筆資料。
+2. 上傳封面及內頁圖片。
+3. 按「儲存 Portal」。
+4. 確認不再出現 `maximum size of 1,048,576 bytes`。
+5. 回 Portal 檢查六宮格封面與內頁圖片。
