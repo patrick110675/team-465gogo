@@ -64,7 +64,7 @@ function uniquePortalItems(list){
 const fmtDate = ts => {try{const d=ts?.toDate?ts.toDate():ts?new Date(ts):new Date();return d.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}catch{return ''}};
 const today = () => new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
 
-const defaultSettings = {mainTitle:'AMR 人力特攻隊', subTitle:'2026 第三季競賽', slogan:'團結・合作・突破・共創榮耀', bannerImage:'', theme:'sky', titleSize:32, bodySize:16, cardColor:'#ffffff', baseStart:'2026-07-06', weekCount:26, scoreRules:null};
+const defaultSettings = {mainTitle:'AMR 人力特攻隊', subTitle:'2026 第三季競賽', slogan:'團結・合作・突破・共創榮耀', bannerImage:'', theme:'sky', titleSize:32, bodySize:16, cardColor:'#ffffff', baseStart:'2026-07-06', weekCount:26, scoreRules:null, deletedScoreRules:[]};
 const themes = [
   ['sky','☁️ AMR Sky'],['navy','👔 Executive Navy'],['gold','🏆 Champion Gold'],['green','🌲 Nanshan Green'],['future','🚀 Future Tech'],['night','🌙 Night COP'],['red','❤️ Festival Red'],['sunrise','🌅 Sunrise'],['carbon','🖤 Carbon Pro'],['custom','🌈 Custom']
 ];
@@ -305,7 +305,8 @@ function scoreRuleManager(){
   return `<h2>🧮 積分項目管理</h2>
   <div class="notice">可直接修改項目名稱與分數，也可以新增或刪除。儲存後，所有手機的計分頁會自動更新。</div>
   <div class="tabs" style="margin-top:12px"><button class="tab ${mode==='personal'?'active':''}" data-rulemode="personal">👤 個人積分項目</button><button class="tab ${mode==='team'?'active':''}" data-rulemode="team">👥 團隊積分項目</button></div>
-  <div class="split"><div>${rules.map((r,i)=>`<div class="listItem"><div class="grow"><b>${esc(r[1])}</b><p>${Number(r[2]||0)} 分｜代碼 ${esc(r[0])}</p></div><button class="btn small secondary" data-edit-rule="${i}">編輯</button><button class="btn small danger" data-del-rule="${i}">刪除</button></div>`).join('')||'<div class="empty">尚無積分項目</div>'}</div>
+  <div class="split"><div>${rules.map((r,i)=>`<div class="listItem"><div class="grow"><b>${esc(r[1])}</b><p>${Number(r[2]||0)} 分｜代碼 ${esc(r[0])}</p></div><button class="btn small secondary" data-edit-rule="${i}">編輯</button><button class="btn small danger" data-del-rule="${i}">刪除</button></div>`).join('')||'<div class="empty">尚無積分項目</div>'}
+  <div style="margin-top:16px"><h3>🗑️ 最近刪除</h3>${(S.settings.deletedScoreRules||[]).filter(x=>x.mode===mode).length?(S.settings.deletedScoreRules||[]).filter(x=>x.mode===mode).map((x,i)=>`<div class="listItem"><div class="grow"><b>${esc(x.item?.[1]||'未命名項目')}</b><p>${Number(x.item?.[2]||0)} 分｜可復原</p></div><button class="btn small ok" data-restore-rule="${i}">復原</button></div>`).join(''):'<div class="empty">沒有可復原的項目</div>'}</div></div>
   <div><h3>${d.index!=null?'編輯':'新增'}項目</h3><label>項目名稱</label><input id="ruleLabel" value="${esc(d.label||'')}"><label>每次分數</label><input id="rulePoints" type="number" step="1" value="${d.points??''}"><label>項目代碼</label><input id="ruleKey" value="${esc(d.key||'')}" placeholder="可留空自動產生"><button class="btn full" id="saveRule" type="button">儲存積分項目</button><button class="btn secondary full" id="newRule" type="button" style="margin-top:8px">清空新增</button>
   <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>週數設定</h3><label>第一週開始日期</label><input id="ruleBaseStart" type="date" value="${esc(S.settings.baseStart||'2026-07-06')}"><label>競賽總週數</label><input id="ruleWeekCount" type="number" min="1" max="53" value="${Number(S.settings.weekCount||26)}"><button class="btn secondary full" id="saveWeekSettings" type="button">儲存週數設定</button></div></div>`;
 }
@@ -335,9 +336,57 @@ async function saveScoreRule(){
   }
 }
 async function deleteScoreRule(index){
-  const mode=S.ruleMode||'personal';const all=activeScoreRules();const arr=all[mode].map(x=>[...x]);
-  if(!arr[index]||!confirm(`確定刪除「${arr[index][1]}」？`))return;
-  arr.splice(index,1);all[mode]=arr;await setDoc(doc(db,'platform','settings'),{scoreRules:all,updatedAt:serverTimestamp()},{merge:true});toast('已刪除積分項目');
+  try{
+    const mode=S.ruleMode||'personal';
+    const all=activeScoreRules();
+    const arr=all[mode].map(x=>[...x]);
+    if(!arr[index])return toast('找不到這個積分項目');
+    const deletedItem=[...arr[index]];
+    const itemName=deletedItem[1];
+    if(!confirm(`確定刪除「${itemName}」？刪除後仍可從「最近刪除」復原。`))return;
+    arr.splice(index,1);
+    all[mode]=arr;
+    const deletedScoreRules=[...(S.settings.deletedScoreRules||[]),{mode,item:deletedItem,deletedAt:Date.now()}].slice(-50);
+    // 先更新本機畫面，避免使用者以為沒有刪除成功。
+    S.settings={...S.settings,scoreRules:{personal:all.personal.map(x=>[...x]),team:all.team.map(x=>[...x])},deletedScoreRules};
+    S.ruleEdit=null;
+    render();
+    toast('正在移到最近刪除…');
+    await setDoc(doc(db,'platform','settings'),{
+      scoreRules:S.settings.scoreRules,
+      deletedScoreRules,
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    toast(`已刪除「${itemName}」，可在最近刪除復原`);
+  }catch(e){
+    console.error('deleteScoreRule failed',e);
+    toast(`刪除失敗：${e?.message||'請稍後再試'}`);
+  }
+}
+async function restoreScoreRule(filteredIndex){
+  try{
+    const mode=S.ruleMode||'personal';
+    const allDeleted=[...(S.settings.deletedScoreRules||[])];
+    const modeItems=allDeleted.map((x,idx)=>({...x,_idx:idx})).filter(x=>x.mode===mode);
+    const target=modeItems[filteredIndex];
+    if(!target)return toast('找不到可復原項目');
+    const all=activeScoreRules();
+    const arr=all[mode].map(x=>[...x]);
+    const restored=[...(target.item||[])];
+    if(!restored.length)return toast('復原資料不完整');
+    if(arr.some(x=>x[0]===restored[0])) restored[0]=`${restored[0]}_restored_${Date.now()}`;
+    arr.push(restored);
+    all[mode]=arr;
+    allDeleted.splice(target._idx,1);
+    S.settings={...S.settings,scoreRules:{personal:all.personal.map(x=>[...x]),team:all.team.map(x=>[...x])},deletedScoreRules:allDeleted};
+    render();
+    toast('正在復原積分項目…');
+    await setDoc(doc(db,'platform','settings'),{scoreRules:S.settings.scoreRules,deletedScoreRules:allDeleted,updatedAt:serverTimestamp()},{merge:true});
+    toast(`已復原「${restored[1]}」`);
+  }catch(e){
+    console.error('restoreScoreRule failed',e);
+    toast(`復原失敗：${e?.message||'請稍後再試'}`);
+  }
 }
 async function saveWeekSettings(){
   try{
@@ -381,7 +430,7 @@ async function handleInnerPortalFiles(input){
 }
 
 function render(){nav(); const check=new URLSearchParams(location.search).get('checkin'); if(check){app.innerHTML=checkinPage(check); bind(); return;} if(S.page==='home') app.innerHTML=home(); if(S.page==='score') app.innerHTML=scorePage(); if(S.page==='qr') app.innerHTML=qr(); if(S.page==='ranking') app.innerHTML=ranking(); if(S.page==='portal') app.innerHTML=portal(); if(S.page==='admin') app.innerHTML=admin(); bind();}
-function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule)));
+function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule))); document.querySelectorAll('[data-restore-rule]').forEach(b=>b.onclick=()=>restoreScoreRule(Number(b.dataset.restoreRule)));
  $('#manualWeekToggle')&&($('#manualWeekToggle').onchange=e=>{S.scoreWeekManual=e.target.checked;S.scoreWeek=S.scoreWeekManual?(S.scoreWeek||currentWeekNumber()):currentWeekNumber();render()}); $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeekManual=true;S.scoreWeek=Number(e.target.value||currentWeekNumber())}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings);
  document.querySelectorAll('[data-edit-score]').forEach(b=>b.onclick=()=>editScore(b.dataset.editScore)); document.querySelectorAll('[data-del-score]').forEach(b=>b.onclick=()=>delScore(b.dataset.delScore));
  $('#createEvent')&&($('#createEvent').onclick=createEvent); document.querySelectorAll('[data-del-event]').forEach(b=>b.onclick=async()=>{if(confirm('刪除活動？')){await deleteDoc(doc(db,'events',b.dataset.delEvent));toast('已刪除')}});
