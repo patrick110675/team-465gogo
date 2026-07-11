@@ -64,7 +64,7 @@ function uniquePortalItems(list){
 const fmtDate = ts => {try{const d=ts?.toDate?ts.toDate():ts?new Date(ts):new Date();return d.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}catch{return ''}};
 const today = () => new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
 
-const defaultSettings = {mainTitle:'AMR 人力特攻隊', subTitle:'2026 第三季競賽', slogan:'團結・合作・突破・共創榮耀', bannerImage:'', theme:'sky', titleSize:32, bodySize:16, cardColor:'#ffffff'};
+const defaultSettings = {mainTitle:'AMR 人力特攻隊', subTitle:'2026 第三季競賽', slogan:'團結・合作・突破・共創榮耀', bannerImage:'', theme:'sky', titleSize:32, bodySize:16, cardColor:'#ffffff', baseStart:'2026-07-06', weekCount:26, scoreRules:null};
 const themes = [
   ['sky','☁️ AMR Sky'],['navy','👔 Executive Navy'],['gold','🏆 Champion Gold'],['green','🌲 Nanshan Green'],['future','🚀 Future Tech'],['night','🌙 Night COP'],['red','❤️ Festival Red'],['sunrise','🌅 Sunrise'],['carbon','🖤 Carbon Pro'],['custom','🌈 Custom']
 ];
@@ -76,11 +76,26 @@ const defaultPortals = [
  {title:'委任制度',subtitle:'主任・襄理・區經理',icon:'👑',type:'pdf',order:5,visible:true,image:'',content:'委任制度與必修課程。'},
  {title:'考照大補帖',subtitle:'公輔班・考試日期・查詢',icon:'📚',type:'link',order:6,visible:true,image:'',content:'考照流程與教材下載。'}
 ];
-const scoreRules = {
+const defaultScoreRules = {
   personal:[['contact','網增接觸／新增名單／約訪',1],['soft_cop','緣故約訪 COP／軟性活動',2],['first_meeting','初次面談',3],['deep_meeting','深度面談',5],['self_cop','自己參加 COP',2],['bring_cop','帶新朋友參加 COP',3]],
   team:[['dream_attend','夢想起飛／夜創出席',2],['dream_friend','帶新朋友參加夢想起飛',3],['soft_attend','通訊處軟性活動出席',2],['soft_friend','帶新朋友參加軟性活動',3],['exam_pass','公司考通過',5],['registered','登錄＋簽約',10],['training','參加優培',5],['team_recruit','團隊共同運作增員',20]]
 };
-let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{},bulkPortalImages:[],portalDraftImages:[]};
+function activeScoreRules(){
+  const saved=S.settings?.scoreRules;
+  const normalize=(arr,mode)=>(Array.isArray(arr)?arr:defaultScoreRules[mode]).map((r,i)=>Array.isArray(r)?r:[r.key||(`${mode}_${i+1}`),r.label||'未命名項目',Number(r.points||0)]);
+  return {personal:normalize(saved?.personal,'personal'),team:normalize(saved?.team,'team')};
+}
+function weekOptions(){
+  const count=Math.max(1,Number(S.settings.weekCount||26));
+  const base=new Date((S.settings.baseStart||'2026-07-06')+'T00:00:00');
+  return Array.from({length:count},(_,i)=>{
+    const st=new Date(base);st.setDate(base.getDate()+i*7);
+    const ed=new Date(st);ed.setDate(st.getDate()+6);
+    const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
+    return {no:i+1,label:`第 ${i+1} 週｜${fmt(st)}－${fmt(ed)}`,start:st.toISOString().slice(0,10),end:ed.toISOString().slice(0,10)};
+  });
+}
+let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:1,ruleMode:'personal',ruleEdit:null};
 function col(name){return collection(db,name)}
 function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); render();},()=>{})}
 onSnapshot(doc(db,'platform','settings'),snap=>{S.settings={...defaultSettings,...(snap.exists()?snap.data():{})}; applyTheme(); render();});
@@ -142,12 +157,39 @@ function scoresBy(){let personal={},team={}; for(const r of S.scores){if(r.delet
 function topList(obj,limit=3){return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,limit)}
 function rankBlock(title,arr){return `<div class="card blue"><div class="section-title"><h2>${title}</h2><button class="btn small secondary" data-go="ranking">查看</button></div>${arr.length?arr.map((x,i)=>`<div class="rankItem"><div class="medal">${['🥇','🥈','🥉'][i]||i+1}</div><b>${esc(x[0])}</b><span>${x[1]} 分</span></div>`).join(''):'<div class="empty">尚無資料</div>'}</div>`}
 function header(){return `<div class="topbar"><div class="brand">${esc(S.settings.mainTitle)}<small>${esc(S.settings.subTitle)}</small></div><div class="bell">🔔</div></div><section class="hero" style="${S.settings.bannerImage?`background-image:linear-gradient(135deg,rgba(255,255,255,.86),rgba(221,241,255,.78)),url('${S.settings.bannerImage}');background-size:cover;background-position:center;`:''}"><h1>${esc(S.settings.mainTitle)}</h1><p>${esc(S.settings.subTitle)}｜${today()}</p><p>${esc(S.settings.slogan)}</p></section>`}
-function home(){const sb=scoresBy();const anns=S.announcements.filter(a=>a.visible!==false).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,3);const latest=S.scores.filter(x=>!x.deleted).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,5);return `${header()}<div class="grid" style="margin-top:14px">${rankBlock('🏆 團隊 TOP3',topList(sb.team))}${rankBlock('👤 個人 TOP3',topList(sb.personal))}<div class="card"><h2>📢 最新公告</h2>${anns.length?anns.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.title)}</b><p>${esc(a.content||'')}</p></div></div>`).join(''):'<div class="empty">尚無公告</div>'}</div><div class="card"><h2>⚡ 最新積分紀錄</h2>${latest.length?latest.map(r=>`<div class="listItem"><div class="grow"><b>${esc(r.mode==='team'?r.teamName:r.memberName)}</b><p>${esc(r.teamName||'')}｜${fmtDate(r.createdAt)}｜${esc(r.source||'手動')}</p></div><span class="pill">${Number(r.total)>0?'+':''}${Number(r.total||0)}</span></div>`).join(''):'<div class="empty">尚無積分紀錄</div>'}</div></div>`}
+function home(){const sb=scoresBy();const anns=S.announcements.filter(a=>a.visible!==false).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,3);const latest=S.scores.filter(x=>!x.deleted).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).slice(0,5);return `${header()}<div class="grid" style="margin-top:14px">${rankBlock('🏆 團隊 TOP3',topList(sb.team))}${rankBlock('👤 個人 TOP3',topList(sb.personal))}<div class="card"><h2>📢 最新公告</h2>${anns.length?anns.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.title)}</b><p>${esc(a.content||'')}</p></div></div>`).join(''):'<div class="empty">尚無公告</div>'}</div><div class="card"><h2>⚡ 最新積分紀錄</h2>${latest.length?latest.map(r=>`<div class="listItem"><div class="grow"><b>${esc(r.mode==='team'?r.teamName:r.memberName)}</b><p>${esc(r.teamName||'')}｜${r.weekLabel?esc(r.weekLabel)+'｜':''}${fmtDate(r.createdAt)}｜${esc(r.source||'手動')}</p></div><span class="pill">${Number(r.total)>0?'+':''}${Number(r.total||0)}</span></div>`).join(''):'<div class="empty">尚無積分紀錄</div>'}</div></div>`}
 
-function scorePage(){const teams=S.teams;const mems=S.members.filter(m=>!S.sharedTeam||m.teamId===S.sharedTeam||m.teamName===teamName(S.sharedTeam));const rules=scoreRules[S.scoreMode];const counts=S.counts[S.scoreMode]||{};const total=rules.reduce((s,[k,,p])=>s+(Number(counts[k]||0)*p),0);return `${header()}<div class="card" style="margin-top:14px"><div class="tabs"><button class="tab ${S.scoreMode==='personal'?'active':''}" data-scoretab="personal">👤 個人積分</button><button class="tab ${S.scoreMode==='team'?'active':''}" data-scoretab="team">👥 團隊積分</button></div><div class="notice">目前選擇：${esc(teamName(S.sharedTeam)||'未選隊伍')} ${S.scoreMode==='personal'?'｜'+esc(memberName(S.sharedMember)||'未選姓名'):''}</div><label>隊伍</label><select id="scoreTeam"><option value="">請選擇隊伍</option>${teams.map(t=>`<option value="${t.id}" ${S.sharedTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>${S.scoreMode==='personal'?`<label>姓名</label><select id="scoreMember"><option value="">請選擇姓名</option>${mems.map(m=>`<option value="${m.id}" ${S.sharedMember===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>`:''}<div style="margin-top:14px">${rules.map(([k,txt,pts])=>`<div class="counter"><b>${esc(txt)} <small class="pill">${pts}分</small></b><div class="ctrl"><button type="button" class="btn small secondary" data-count="${k}" data-delta="-1">－</button><strong>${counts[k]||0}</strong><button type="button" class="btn small" data-count="${k}" data-delta="1">＋</button></div></div>`).join('')}</div><div class="scoreTotal">本次得分 ${total} 分</div><button class="btn full" id="saveScore" type="button">儲存本次紀錄</button></div>`}
+function scorePage(){
+  const teams=S.teams;
+  const mems=S.members.filter(m=>!S.sharedTeam||m.teamId===S.sharedTeam||m.teamName===teamName(S.sharedTeam));
+  const rules=activeScoreRules()[S.scoreMode];
+  const counts=S.counts[S.scoreMode]||{};
+  const total=rules.reduce((sum,[k,,p])=>sum+(Number(counts[k]||0)*Number(p||0)),0);
+  const weeks=weekOptions();
+  if(!S.scoreWeek||S.scoreWeek>weeks.length)S.scoreWeek=1;
+  return `${header()}<div class="card" style="margin-top:14px">
+    <div class="tabs"><button class="tab ${S.scoreMode==='personal'?'active':''}" data-scoretab="personal">👤 個人積分</button><button class="tab ${S.scoreMode==='team'?'active':''}" data-scoretab="team">👥 團隊積分</button></div>
+    <div class="notice">目前選擇：${esc(teamName(S.sharedTeam)||'未選隊伍')} ${S.scoreMode==='personal'?'｜'+esc(memberName(S.sharedMember)||'未選姓名'):''}</div>
+    <label>計分週數</label><select id="scoreWeek">${weeks.map(w=>`<option value="${w.no}" ${Number(S.scoreWeek)===w.no?'selected':''}>${w.label}</option>`).join('')}</select>
+    <label>隊伍</label><select id="scoreTeam"><option value="">請選擇隊伍</option>${teams.map(t=>`<option value="${t.id}" ${S.sharedTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+    ${S.scoreMode==='personal'?`<label>姓名</label><select id="scoreMember"><option value="">請選擇姓名</option>${mems.map(m=>`<option value="${m.id}" ${S.sharedMember===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>`:''}
+    <div style="margin-top:14px">${rules.map(([k,txt,pts])=>`<div class="counter"><b>${esc(txt)} <small class="pill">${Number(pts||0)}分</small></b><div class="ctrl"><button type="button" class="btn small secondary" data-count="${esc(k)}" data-delta="-1">－</button><strong>${counts[k]||0}</strong><button type="button" class="btn small" data-count="${esc(k)}" data-delta="1">＋</button></div></div>`).join('')}</div>
+    <div class="scoreTotal">本次得分 ${total} 分</div><button class="btn full" id="saveScore" type="button">儲存本次紀錄</button>
+  </div>`
+}
 function teamName(id){return S.teams.find(t=>t.id===id)?.name||''} function memberName(id){return S.members.find(m=>m.id===id)?.name||''}
-async function saveScore(){if(!S.sharedTeam) return toast('請先選隊伍'); if(S.scoreMode==='personal'&&!S.sharedMember) return toast('請先選姓名'); const rules=scoreRules[S.scoreMode];const counts=S.counts[S.scoreMode]||{}; const items=rules.map(([k,txt,pts])=>({key:k,label:txt,points:pts,count:Number(counts[k]||0),score:Number(counts[k]||0)*pts})).filter(x=>x.count); const total=items.reduce((s,x)=>s+x.score,0); if(!items.length) return toast('請先按 + 登記項目'); await addDoc(col('score_history'),{mode:S.scoreMode,teamId:S.sharedTeam,teamName:teamName(S.sharedTeam),memberId:S.scoreMode==='personal'?S.sharedMember:'',memberName:S.scoreMode==='personal'?memberName(S.sharedMember):'',items,total,source:'手動',createdBy:currentUser?.uid||'anonymous',note:'',deleted:false,createdAt:serverTimestamp(),updatedAt:serverTimestamp()}); S.counts[S.scoreMode]={}; toast('已儲存'); render();}
-
+async function saveScore(){
+  if(!S.sharedTeam) return toast('請先選隊伍');
+  if(S.scoreMode==='personal'&&!S.sharedMember) return toast('請先選姓名');
+  const rules=activeScoreRules()[S.scoreMode];
+  const counts=S.counts[S.scoreMode]||{};
+  const items=rules.map(([k,txt,pts])=>({key:k,label:txt,points:Number(pts||0),count:Number(counts[k]||0),score:Number(counts[k]||0)*Number(pts||0)})).filter(x=>x.count);
+  const total=items.reduce((s,x)=>s+x.score,0);
+  if(!items.length) return toast('請先按 + 登記項目');
+  const week=weekOptions().find(w=>w.no===Number(S.scoreWeek))||weekOptions()[0];
+  await addDoc(col('score_history'),{mode:S.scoreMode,weekNo:week.no,weekLabel:week.label,weekStart:week.start,weekEnd:week.end,teamId:S.sharedTeam,teamName:teamName(S.sharedTeam),memberId:S.scoreMode==='personal'?S.sharedMember:'',memberName:S.scoreMode==='personal'?memberName(S.sharedMember):'',items,total,source:'手動',createdBy:currentUser?.uid||'anonymous',note:'',deleted:false,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+  S.counts[S.scoreMode]={}; toast(`第 ${week.no} 週已儲存`); render();
+}
 function ranking(){let tabs=[['score','🏆 積分排行'],['hsc','🏅 人超盃'],['att','📅 例會出席'],['history','📜 歷史紀錄']];return `${header()}<div class="card" style="margin-top:14px"><div class="tabs">${tabs.map(([id,tx])=>`<button class="tab ${S.rankTab===id?'active':''}" data-ranktab="${id}">${tx}</button>`).join('')}</div>${rankContent()}</div>`}
 function rankContent(){const sb=scoresBy(); if(S.rankTab==='score') return `<div class="split">${rankBlock('👥 團隊排行',topList(sb.team,20))}${rankBlock('👤 個人排行',topList(sb.personal,20))}</div>`; if(S.rankTab==='hsc'){const arr=topList(sb.personal,50);return `<h2>🏅 人超盃分數</h2>${arr.map((x,i)=>`<div class="rankItem"><div class="medal">${i<3?['🥇','🥈','🥉'][i]:i+1}</div><b>${esc(x[0])}</b><span>${x[1]} 分</span></div>`).join('')||'<div class="empty">尚無資料</div>'}<h2>🎯 達成人員</h2>${arr.filter(x=>x[1]>=100).map(x=>`<span class="pill" style="margin:4px">✅ ${esc(x[0])}</span>`).join('')||'<div class="empty">尚無達成人員（預設100分）</div>'}`}
  if(S.rankTab==='att'){return `<h2>📅 例會出席</h2>${S.attendance.length?S.attendance.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.memberName||a.name)}</b><p>${esc(a.status||'出席')}｜${fmtDate(a.createdAt)}</p></div></div>`).join(''):'<div class="empty">尚無例會紀錄</div>'}`}
@@ -182,8 +224,8 @@ function portalDetail(p){
 }
 function ytEmbed(url){const m=String(url||'').match(/(?:v=|youtu\.be\/|embed\/)([\w-]+)/); return m?`https://www.youtube.com/embed/${m[1]}`:url}
 
-function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
-function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
+function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['rules','🧮 積分項目'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
+function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='rules')return scoreRuleManager(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
 function settingsForm(){return `<h2>🏠 首頁設定</h2><label>主標題</label><input id="setMain" value="${esc(S.settings.mainTitle)}"><label>副標題</label><input id="setSub" value="${esc(S.settings.subTitle)}"><label>標語</label><input id="setSlogan" value="${esc(S.settings.slogan)}"><label>Banner 圖片網址</label><input id="setBanner" value="${esc(S.settings.bannerImage)}"><label>標題大小</label><input id="setTitleSize" type="number" value="${S.settings.titleSize||32}"><label>內文字大小</label><input id="setBodySize" type="number" value="${S.settings.bodySize||16}"><button class="btn full" id="saveSettings" type="button">儲存首頁設定</button>`}
 async function saveSettings(){await setDoc(doc(db,'platform','settings'),{...S.settings,mainTitle:$('#setMain').value,subTitle:$('#setSub').value,slogan:$('#setSlogan').value,bannerImage:$('#setBanner').value,titleSize:Number($('#setTitleSize').value||32),bodySize:Number($('#setBodySize').value||16),updatedAt:serverTimestamp()},{merge:true});toast('已儲存')}
 function crudAnnouncements(){return `<h2>📢 公告管理</h2><div class="split"><div><h3>公告列表</h3>${S.announcements.length?S.announcements.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.title)}</b><p>${a.visible===false?'隱藏':'顯示'}｜${fmtDate(a.createdAt)}</p></div><button class="btn small secondary" data-load-ann="${a.id}">編輯</button><button class="btn small danger" data-del-ann="${a.id}">刪除</button></div>`).join(''):'<div class="empty">尚無公告</div>'}</div><div><h3>${S.edit?.type==='ann'?'編輯':'新增'}公告</h3><label>標題</label><input id="annTitle" value="${esc(S.edit?.data?.title||'')}"><label>內容</label><textarea id="annContent">${esc(S.edit?.data?.content||'')}</textarea><label><input id="annVisible" type="checkbox" ${S.edit?.data?.visible===false?'':'checked'} style="width:auto;min-height:auto"> 顯示</label><button class="btn full" id="saveAnn" type="button">儲存公告</button><button class="btn secondary full" id="newAnn" type="button" style="margin-top:8px">清空新增</button></div></div>`}
@@ -236,6 +278,38 @@ async function applyBulkPortalImages(){
   for(let i=0;i<6;i++) await updateDoc(doc(db,'portals',items[i].id),{image:imgs[i],coverImage:imgs[i],updatedAt:serverTimestamp()});
   S.bulkPortalImages=[];toast('六張封面已依順序儲存');render();
 }
+function scoreRuleManager(){
+  const mode=S.ruleMode||'personal';
+  const rules=activeScoreRules()[mode];
+  const d=S.ruleEdit||{};
+  return `<h2>🧮 積分項目管理</h2>
+  <div class="notice">可直接修改項目名稱與分數，也可以新增或刪除。儲存後，所有手機的計分頁會自動更新。</div>
+  <div class="tabs" style="margin-top:12px"><button class="tab ${mode==='personal'?'active':''}" data-rulemode="personal">👤 個人積分項目</button><button class="tab ${mode==='team'?'active':''}" data-rulemode="team">👥 團隊積分項目</button></div>
+  <div class="split"><div>${rules.map((r,i)=>`<div class="listItem"><div class="grow"><b>${esc(r[1])}</b><p>${Number(r[2]||0)} 分｜代碼 ${esc(r[0])}</p></div><button class="btn small secondary" data-edit-rule="${i}">編輯</button><button class="btn small danger" data-del-rule="${i}">刪除</button></div>`).join('')||'<div class="empty">尚無積分項目</div>'}</div>
+  <div><h3>${d.index!=null?'編輯':'新增'}項目</h3><label>項目名稱</label><input id="ruleLabel" value="${esc(d.label||'')}"><label>每次分數</label><input id="rulePoints" type="number" step="1" value="${d.points??''}"><label>項目代碼</label><input id="ruleKey" value="${esc(d.key||'')}" placeholder="可留空自動產生"><button class="btn full" id="saveRule" type="button">儲存積分項目</button><button class="btn secondary full" id="newRule" type="button" style="margin-top:8px">清空新增</button>
+  <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>週數設定</h3><label>第一週開始日期</label><input id="ruleBaseStart" type="date" value="${esc(S.settings.baseStart||'2026-07-06')}"><label>競賽總週數</label><input id="ruleWeekCount" type="number" min="1" max="53" value="${Number(S.settings.weekCount||26)}"><button class="btn secondary full" id="saveWeekSettings" type="button">儲存週數設定</button></div></div>`;
+}
+async function saveScoreRule(){
+  const mode=S.ruleMode||'personal';
+  const all=activeScoreRules();
+  const arr=all[mode].map(x=>[...x]);
+  const label=$('#ruleLabel').value.trim();const points=Number($('#rulePoints').value||0);
+  let key=$('#ruleKey').value.trim().replace(/[^a-zA-Z0-9_\-]/g,'_');
+  if(!label)return toast('請輸入項目名稱');
+  if(!key)key=`${mode}_${Date.now()}`;
+  if(S.ruleEdit?.index!=null)arr[S.ruleEdit.index]=[key,label,points]; else arr.push([key,label,points]);
+  all[mode]=arr;
+  await setDoc(doc(db,'platform','settings'),{scoreRules:all,updatedAt:serverTimestamp()},{merge:true});
+  S.ruleEdit=null;toast('積分項目已儲存');
+}
+async function deleteScoreRule(index){
+  const mode=S.ruleMode||'personal';const all=activeScoreRules();const arr=all[mode].map(x=>[...x]);
+  if(!arr[index]||!confirm(`確定刪除「${arr[index][1]}」？`))return;
+  arr.splice(index,1);all[mode]=arr;await setDoc(doc(db,'platform','settings'),{scoreRules:all,updatedAt:serverTimestamp()},{merge:true});toast('已刪除積分項目');
+}
+async function saveWeekSettings(){
+  await setDoc(doc(db,'platform','settings'),{baseStart:$('#ruleBaseStart').value||'2026-07-06',weekCount:Math.max(1,Number($('#ruleWeekCount').value||26)),updatedAt:serverTimestamp()},{merge:true});toast('週數設定已儲存');
+}
 function dataImport(){return `<h2>📥 資料匯入</h2><div class="notice">此功能會讀取舊資料 <b>platform → settings → amrData → teams</b>，把原本隊伍與成員帶回新版。系統會自動略過同名隊伍與同隊同名人員，不會刪除舊資料。</div><br><button class="btn full" id="importLegacy" type="button">匯入原有人員與隊伍</button><br><br><div class="card blue"><b>目前新版資料</b><p>隊伍：${S.teams.length} 個｜人員：${S.members.length} 位</p>${S.importReport?`<p>${esc(S.importReport)}</p>`:''}</div>`}
 function themeCenter(){return `<h2>🎨 主題中心</h2><div class="grid grid2">${themes.map(([id,name])=>`<button class="btn ${S.settings.theme===id?'':'secondary'}" data-theme-set="${id}" type="button">${name}</button>`).join('')}</div><p class="fileNote">主題會同步到 Firebase，所有裝置重新開啟後會套用同一主題。</p>`}
 async function setTheme(id){await setDoc(doc(db,'platform','settings'),{theme:id,updatedAt:serverTimestamp()},{merge:true});toast('主題已套用')}
@@ -262,8 +336,8 @@ async function handleInnerPortalFiles(input){
 }
 
 function render(){nav(); const check=new URLSearchParams(location.search).get('checkin'); if(check){app.innerHTML=checkinPage(check); bind(); return;} if(S.page==='home') app.innerHTML=home(); if(S.page==='score') app.innerHTML=scorePage(); if(S.page==='qr') app.innerHTML=qr(); if(S.page==='ranking') app.innerHTML=ranking(); if(S.page==='portal') app.innerHTML=portal(); if(S.page==='admin') app.innerHTML=admin(); bind();}
-function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()});
- $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore);
+function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule)));
+ $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeek=Number(e.target.value||1)}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings);
  document.querySelectorAll('[data-edit-score]').forEach(b=>b.onclick=()=>editScore(b.dataset.editScore)); document.querySelectorAll('[data-del-score]').forEach(b=>b.onclick=()=>delScore(b.dataset.delScore));
  $('#createEvent')&&($('#createEvent').onclick=createEvent); document.querySelectorAll('[data-del-event]').forEach(b=>b.onclick=async()=>{if(confirm('刪除活動？')){await deleteDoc(doc(db,'events',b.dataset.delEvent));toast('已刪除')}});
  $('#ckKind')&&($('#ckKind').onchange=e=>{$('#memberFields').classList.toggle('hidden',e.target.value==='friend');$('#friendFields').classList.toggle('hidden',e.target.value!=='friend')}); $('#ckTeam')&&($('#ckTeam').onchange=e=>{const mems=S.members.filter(m=>m.teamId===e.target.value);$('#ckMember').innerHTML='<option value="">請選姓名</option>'+mems.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}); $('#submitCheckin')&&($('#submitCheckin').onclick=e=>submitCheckin(e.currentTarget.dataset.eid));
