@@ -273,7 +273,7 @@ function crudPortal(){
   <label>類型</label><select id="portalType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select>
   <label>標題</label><input id="portalTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="portalSub" value="${esc(d.subtitle||'')}"><label>Icon</label><input id="portalIcon" value="${esc(d.icon||'⭐')}">
   <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。可貼圖片網址，或由下方選擇檔案。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
-  <label>內頁圖片（可一次選多張，最多 3 張）</label><div class="fileNote">點進 Portal 後會依序顯示。若沒有另外上傳，內頁會自動使用封面圖片。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
+  <label>內頁圖片（可一次選多張，最多 6 張）</label><div class="fileNote">點進 Portal 後會依序顯示。若沒有另外上傳，內頁會自動使用封面圖片。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
   <label>貼文內容</label><textarea id="portalContent" placeholder="可貼完整活動說明、段落與換行">${esc(d.content||'')}</textarea>
   <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||'')}"></div></div>
   <label>報名／外部連結</label><input id="portalUrl" value="${esc(d.url||'')}" placeholder="https://..."><label>按鈕文字</label><input id="portalButtonText" value="${esc(d.buttonText||'')}" placeholder="例如：立即報名">
@@ -376,7 +376,7 @@ async function handleBulkPortalFiles(input){
   try{S.bulkPortalImages=[];for(const f of files)S.bulkPortalImages.push(await compressImageFile(f,1200,420000));render();toast('六張圖片已完成預覽')}catch(e){console.error(e);S.bulkPortalImages=[];toast('圖片處理失敗')}
 }
 async function handleInnerPortalFiles(input){
-  const files=[...(input.files||[])].slice(0,3);if(!files.length)return;toast('正在處理內頁圖片…');
+  const files=[...(input.files||[])].slice(0,6);if(!files.length)return;toast('正在處理內頁圖片…');
   try{const arr=[];for(const f of files)arr.push(await compressImageFile(f,1400,240000));if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;render();toast('內頁圖片已加入，請按儲存 Portal')}catch(e){console.error(e);toast('內頁圖片處理失敗')}
 }
 
