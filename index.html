@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>AMR Platform 1.0</title>
+  <title>AMR Platform 1.0｜積分規則自動週數修正版</title>
   <meta name="theme-color" content="#dff1ff" />
   <style>
     :root{--bg:#eaf6ff;--bg2:#d8efff;--card:#ffffff;--card2:#f4fbff;--text:#123049;--muted:#68849a;--primary:#2f80ed;--primary2:#76bfff;--accent:#f6c453;--danger:#ef4444;--ok:#16a34a;--line:#cfe8fb;--shadow:0 14px 35px rgba(31,99,151,.16);--radius:24px;--font:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;--titleSize:32px;--bodySize:16px}
@@ -85,6 +85,12 @@ function activeScoreRules(){
   const normalize=(arr,mode)=>(Array.isArray(arr)?arr:defaultScoreRules[mode]).map((r,i)=>Array.isArray(r)?r:[r.key||(`${mode}_${i+1}`),r.label||'未命名項目',Number(r.points||0)]);
   return {personal:normalize(saved?.personal,'personal'),team:normalize(saved?.team,'team')};
 }
+function localDateValue(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function weekOptions(){
   const count=Math.max(1,Number(S.settings.weekCount||26));
   const base=new Date((S.settings.baseStart||'2026-07-06')+'T00:00:00');
@@ -92,10 +98,19 @@ function weekOptions(){
     const st=new Date(base);st.setDate(base.getDate()+i*7);
     const ed=new Date(st);ed.setDate(st.getDate()+6);
     const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
-    return {no:i+1,label:`第 ${i+1} 週｜${fmt(st)}－${fmt(ed)}`,start:st.toISOString().slice(0,10),end:ed.toISOString().slice(0,10)};
+    return {no:i+1,label:`第 ${i+1} 週｜${fmt(st)}－${fmt(ed)}`,start:localDateValue(st),end:localDateValue(ed)};
   });
 }
-let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:1,ruleMode:'personal',ruleEdit:null};
+function currentWeekNumber(){
+  const weeks=weekOptions();
+  const base=new Date((S.settings.baseStart||'2026-07-06')+'T00:00:00');
+  const now=new Date();
+  const todayLocal=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const diff=Math.floor((todayLocal-base)/(24*60*60*1000));
+  const no=Math.floor(diff/7)+1;
+  return Math.min(weeks.length,Math.max(1,no));
+}
+let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:null,scoreWeekManual:false,ruleMode:'personal',ruleEdit:null};
 function col(name){return collection(db,name)}
 function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); render();},()=>{})}
 onSnapshot(doc(db,'platform','settings'),snap=>{S.settings={...defaultSettings,...(snap.exists()?snap.data():{})}; applyTheme(); render();});
@@ -166,11 +181,16 @@ function scorePage(){
   const counts=S.counts[S.scoreMode]||{};
   const total=rules.reduce((sum,[k,,p])=>sum+(Number(counts[k]||0)*Number(p||0)),0);
   const weeks=weekOptions();
-  if(!S.scoreWeek||S.scoreWeek>weeks.length)S.scoreWeek=1;
+  const autoWeek=currentWeekNumber();
+  if(!S.scoreWeekManual) S.scoreWeek=autoWeek;
+  if(!S.scoreWeek||S.scoreWeek>weeks.length)S.scoreWeek=autoWeek;
+  const selectedWeek=weeks.find(w=>w.no===Number(S.scoreWeek))||weeks[autoWeek-1];
   return `${header()}<div class="card" style="margin-top:14px">
     <div class="tabs"><button class="tab ${S.scoreMode==='personal'?'active':''}" data-scoretab="personal">👤 個人積分</button><button class="tab ${S.scoreMode==='team'?'active':''}" data-scoretab="team">👥 團隊積分</button></div>
     <div class="notice">目前選擇：${esc(teamName(S.sharedTeam)||'未選隊伍')} ${S.scoreMode==='personal'?'｜'+esc(memberName(S.sharedMember)||'未選姓名'):''}</div>
-    <label>計分週數</label><select id="scoreWeek">${weeks.map(w=>`<option value="${w.no}" ${Number(S.scoreWeek)===w.no?'selected':''}>${w.label}</option>`).join('')}</select>
+    <div class="notice" style="margin-top:10px"><b>本次自動計入：${esc(selectedWeek.label)}</b><br><span style="color:var(--muted)">系統會依今天日期自動判斷週數。</span></div>
+    <label style="display:flex;align-items:center;gap:8px"><input id="manualWeekToggle" type="checkbox" ${S.scoreWeekManual?'checked':''} style="width:auto;min-height:auto"> 補填其他週數</label>
+    ${S.scoreWeekManual?`<label>補填週數</label><select id="scoreWeek">${weeks.map(w=>`<option value="${w.no}" ${Number(S.scoreWeek)===w.no?'selected':''}>${w.label}</option>`).join('')}</select>`:''}
     <label>隊伍</label><select id="scoreTeam"><option value="">請選擇隊伍</option>${teams.map(t=>`<option value="${t.id}" ${S.sharedTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
     ${S.scoreMode==='personal'?`<label>姓名</label><select id="scoreMember"><option value="">請選擇姓名</option>${mems.map(m=>`<option value="${m.id}" ${S.sharedMember===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>`:''}
     <div style="margin-top:14px">${rules.map(([k,txt,pts])=>`<div class="counter"><b>${esc(txt)} <small class="pill">${Number(pts||0)}分</small></b><div class="ctrl"><button type="button" class="btn small secondary" data-count="${esc(k)}" data-delta="-1">－</button><strong>${counts[k]||0}</strong><button type="button" class="btn small" data-count="${esc(k)}" data-delta="1">＋</button></div></div>`).join('')}</div>
@@ -290,17 +310,29 @@ function scoreRuleManager(){
   <hr style="border:0;border-top:1px solid var(--line);margin:18px 0"><h3>週數設定</h3><label>第一週開始日期</label><input id="ruleBaseStart" type="date" value="${esc(S.settings.baseStart||'2026-07-06')}"><label>競賽總週數</label><input id="ruleWeekCount" type="number" min="1" max="53" value="${Number(S.settings.weekCount||26)}"><button class="btn secondary full" id="saveWeekSettings" type="button">儲存週數設定</button></div></div>`;
 }
 async function saveScoreRule(){
-  const mode=S.ruleMode||'personal';
-  const all=activeScoreRules();
-  const arr=all[mode].map(x=>[...x]);
-  const label=$('#ruleLabel').value.trim();const points=Number($('#rulePoints').value||0);
-  let key=$('#ruleKey').value.trim().replace(/[^a-zA-Z0-9_\-]/g,'_');
-  if(!label)return toast('請輸入項目名稱');
-  if(!key)key=`${mode}_${Date.now()}`;
-  if(S.ruleEdit?.index!=null)arr[S.ruleEdit.index]=[key,label,points]; else arr.push([key,label,points]);
-  all[mode]=arr;
-  await setDoc(doc(db,'platform','settings'),{scoreRules:all,updatedAt:serverTimestamp()},{merge:true});
-  S.ruleEdit=null;toast('積分項目已儲存');
+  try{
+    const mode=S.ruleMode||'personal';
+    const all=activeScoreRules();
+    const arr=all[mode].map(x=>[...x]);
+    const label=$('#ruleLabel')?.value.trim()||'';
+    const points=Number($('#rulePoints')?.value);
+    let key=($('#ruleKey')?.value||'').trim().replace(/[^a-zA-Z0-9_\-]/g,'_');
+    if(!label)return toast('請輸入項目名稱');
+    if(!Number.isFinite(points))return toast('請輸入正確分數');
+    if(!key)key=`${mode}_${Date.now()}`;
+    if(S.ruleEdit?.index!=null)arr[S.ruleEdit.index]=[key,label,points]; else arr.push([key,label,points]);
+    all[mode]=arr;
+    // 先更新畫面，再寫入 Firebase，避免按下後看起來沒有反應。
+    S.settings={...S.settings,scoreRules:{personal:all.personal.map(x=>[...x]),team:all.team.map(x=>[...x])}};
+    S.ruleEdit=null;
+    render();
+    toast('正在儲存積分項目…');
+    await setDoc(doc(db,'platform','settings'),{scoreRules:S.settings.scoreRules,updatedAt:serverTimestamp()},{merge:true});
+    toast('積分項目已儲存');
+  }catch(e){
+    console.error('saveScoreRule failed',e);
+    toast(`儲存失敗：${e?.message||'請稍後再試'}`);
+  }
 }
 async function deleteScoreRule(index){
   const mode=S.ruleMode||'personal';const all=activeScoreRules();const arr=all[mode].map(x=>[...x]);
@@ -308,7 +340,20 @@ async function deleteScoreRule(index){
   arr.splice(index,1);all[mode]=arr;await setDoc(doc(db,'platform','settings'),{scoreRules:all,updatedAt:serverTimestamp()},{merge:true});toast('已刪除積分項目');
 }
 async function saveWeekSettings(){
-  await setDoc(doc(db,'platform','settings'),{baseStart:$('#ruleBaseStart').value||'2026-07-06',weekCount:Math.max(1,Number($('#ruleWeekCount').value||26)),updatedAt:serverTimestamp()},{merge:true});toast('週數設定已儲存');
+  try{
+    const baseStart=$('#ruleBaseStart')?.value||'2026-07-06';
+    const weekCount=Math.max(1,Number($('#ruleWeekCount')?.value||26));
+    S.settings={...S.settings,baseStart,weekCount};
+    S.scoreWeekManual=false;
+    S.scoreWeek=currentWeekNumber();
+    render();
+    toast('正在儲存週數設定…');
+    await setDoc(doc(db,'platform','settings'),{baseStart,weekCount,updatedAt:serverTimestamp()},{merge:true});
+    toast(`週數設定已儲存，目前自動為第 ${S.scoreWeek} 週`);
+  }catch(e){
+    console.error('saveWeekSettings failed',e);
+    toast(`週數儲存失敗：${e?.message||'請稍後再試'}`);
+  }
 }
 function dataImport(){return `<h2>📥 資料匯入</h2><div class="notice">此功能會讀取舊資料 <b>platform → settings → amrData → teams</b>，把原本隊伍與成員帶回新版。系統會自動略過同名隊伍與同隊同名人員，不會刪除舊資料。</div><br><button class="btn full" id="importLegacy" type="button">匯入原有人員與隊伍</button><br><br><div class="card blue"><b>目前新版資料</b><p>隊伍：${S.teams.length} 個｜人員：${S.members.length} 位</p>${S.importReport?`<p>${esc(S.importReport)}</p>`:''}</div>`}
 function themeCenter(){return `<h2>🎨 主題中心</h2><div class="grid grid2">${themes.map(([id,name])=>`<button class="btn ${S.settings.theme===id?'':'secondary'}" data-theme-set="${id}" type="button">${name}</button>`).join('')}</div><p class="fileNote">主題會同步到 Firebase，所有裝置重新開啟後會套用同一主題。</p>`}
@@ -337,7 +382,7 @@ async function handleInnerPortalFiles(input){
 
 function render(){nav(); const check=new URLSearchParams(location.search).get('checkin'); if(check){app.innerHTML=checkinPage(check); bind(); return;} if(S.page==='home') app.innerHTML=home(); if(S.page==='score') app.innerHTML=scorePage(); if(S.page==='qr') app.innerHTML=qr(); if(S.page==='ranking') app.innerHTML=ranking(); if(S.page==='portal') app.innerHTML=portal(); if(S.page==='admin') app.innerHTML=admin(); bind();}
 function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule)));
- $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeek=Number(e.target.value||1)}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings);
+ $('#manualWeekToggle')&&($('#manualWeekToggle').onchange=e=>{S.scoreWeekManual=e.target.checked;S.scoreWeek=S.scoreWeekManual?(S.scoreWeek||currentWeekNumber()):currentWeekNumber();render()}); $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeekManual=true;S.scoreWeek=Number(e.target.value||currentWeekNumber())}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings);
  document.querySelectorAll('[data-edit-score]').forEach(b=>b.onclick=()=>editScore(b.dataset.editScore)); document.querySelectorAll('[data-del-score]').forEach(b=>b.onclick=()=>delScore(b.dataset.delScore));
  $('#createEvent')&&($('#createEvent').onclick=createEvent); document.querySelectorAll('[data-del-event]').forEach(b=>b.onclick=async()=>{if(confirm('刪除活動？')){await deleteDoc(doc(db,'events',b.dataset.delEvent));toast('已刪除')}});
  $('#ckKind')&&($('#ckKind').onchange=e=>{$('#memberFields').classList.toggle('hidden',e.target.value==='friend');$('#friendFields').classList.toggle('hidden',e.target.value!=='friend')}); $('#ckTeam')&&($('#ckTeam').onchange=e=>{const mems=S.members.filter(m=>m.teamId===e.target.value);$('#ckMember').innerHTML='<option value="">請選姓名</option>'+mems.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}); $('#submitCheckin')&&($('#submitCheckin').onclick=e=>submitCheckin(e.currentTarget.dataset.eid));
