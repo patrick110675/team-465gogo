@@ -1,18 +1,11 @@
-# AMR Platform 1.0 — Portal Storage 修正版
+# AMR Platform 1.0 修正版
 
-## 修正內容
-- 修正 Portal 儲存時 Firestore 文件超過 1MB 的錯誤。
-- 封面圖片、六張內頁圖片改存 Firebase Storage。
-- Firestore 只保存圖片下載網址，不再保存 Base64 圖片字串。
-- 舊版已存在的 Base64 圖片，在再次儲存 Portal 時會自動搬移到 Storage。
-- PDF 仍維持上傳到 Firebase Storage。
+本版修正：
 
-## 更新方式
-將 `index.html` 覆蓋 GitHub 專案根目錄的同名檔案並 Commit。
+1. 點擊中央「＋」後，選擇個人積分或團隊積分，選單會自動向下收合。
+2. 團隊積分也必須選擇隊伍與姓名。
+3. 個人／團隊模式共用已選擇的隊伍與姓名，切換時不用再選一次。
+4. 團隊積分仍只計入團隊排行榜，姓名僅作為完成者／登記人的紀錄。
+5. 積分歷史會顯示團隊名稱與姓名，方便日後查詢。
 
-## 測試
-1. 管理 → Portal → 編輯一筆資料。
-2. 上傳封面及內頁圖片。
-3. 按「儲存 Portal」。
-4. 確認不再出現 `maximum size of 1,048,576 bytes`。
-5. 回 Portal 檢查六宮格封面與內頁圖片。
+更新方式：把 `index.html` 覆蓋 GitHub 專案根目錄的同名檔案，然後 Commit changes。
