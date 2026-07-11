@@ -1,13 +1,15 @@
-# AMR Platform 1.0｜積分項目誤刪復原版
+# AMR Platform 1.0 — Portal 欄位與 PDF 上傳修正版
 
-本版新增：
-- 刪除積分項目時，不會永久消失，而是移到「最近刪除」
-- 個人／團隊積分項目各自顯示可復原清單
-- 按「復原」即可回到原本積分項目清單
-- 復原狀態同步寫入 Firebase
-- 最多保留最近 50 筆刪除項目
+## 本版修正
+- Portal 內頁會顯示：時間、地點、報名／外部連結、按鈕文字。
+- 報名網址即使沒有輸入 `https://`，系統也會自動補上。
+- PDF 改為直接選擇 `.pdf` 檔案上傳，不需要自行貼網址。
+- PDF 上傳至 Firebase Storage，下載網址會自動保存到 Firestore。
+- 內頁可同時顯示報名按鈕、PDF 按鈕與 YouTube 按鈕。
+- 舊欄位名稱相容：date/time/eventDate、place/location/eventPlace、url/link/registrationUrl。
 
-更新方式：
-1. 解壓縮 ZIP。
-2. 將 index.html 與 README.md 上傳覆蓋 GitHub 專案根目錄。
-3. Commit changes。
+## 更新方式
+將解壓縮後的 `index.html`、`README.md` 覆蓋 GitHub 專案根目錄，再 Commit changes。
+
+## 注意
+PDF 上傳需要 Firebase Storage 已啟用，且規則允許已登入的匿名使用者上傳檔案。

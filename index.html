@@ -28,6 +28,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
@@ -41,6 +42,7 @@ const firebaseConfig = {
 const appFB = initializeApp(firebaseConfig);
 const auth = getAuth(appFB);
 const db = getFirestore(appFB);
+const storage = getStorage(appFB);
 let currentUser = null;
 signInAnonymously(auth).catch(()=>{});
 onAuthStateChanged(auth,u=>{currentUser=u;});
@@ -50,6 +52,7 @@ const app = $('#app');
 const toast = msg=>{const t=$('#toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',1800)};
 const esc = v => String(v??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c]));
 function portalImg(p){return p?.coverImage || p?.image || p?.imageUrl || p?.bannerImage || ''}
+function safeUrl(v){const x=String(v||'').trim();if(!x)return '';return /^(https?:|data:|blob:)/i.test(x)?x:'https://'+x}
 function uniquePortalItems(list){
   const map=new Map();
   for(const p of (list||[])){
@@ -231,19 +234,20 @@ function portal(){
   return `${header()}<div class="card" style="margin-top:14px"><h2>⭐ Portal</h2><div class="portalGrid">${items.map(p=>{const img=portalImg(p);return `<a href="#" class="portalCard" data-open-portal="${p.id}">${img?`<img src="${img}" alt="${esc(p.title)}">`:''}<div class="pcText"><b>${esc(p.icon||'⭐')} ${esc(p.title)}</b><em>${esc(p.subtitle||'')}</em></div></a>`}).join('')}</div></div>`
 }
 function portalDetail(p){
-  if(!p)return '<div class="card">找不到資料</div>';
   const cover=portalImg(p);
   const inner=Array.isArray(p.contentImages)&&p.contentImages.length?p.contentImages:(cover?[cover]:[]);
   const gallery=inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<img src="${src}" alt="${esc(p.title)} 圖片 ${i+1}">`).join('')}</div>`:'';
-  let action='';
-  if(p.type==='activity'&&p.url) action=`<a class="btn full" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.buttonText||'立即報名')}</a>`;
-  if(p.type==='pdf'&&p.pdfUrl) action=`<a class="btn full" href="${esc(p.pdfUrl)}" target="_blank" rel="noopener">${esc(p.buttonText||'開啟 PDF')}</a>`;
-  if(p.type==='link'&&p.url) action=`<a class="btn full" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.buttonText||'前往連結')}</a>`;
-  if(p.type==='youtube'&&p.youtubeUrl) action=`<div style="position:relative;padding-top:56%;border-radius:18px;overflow:hidden"><iframe src="${ytEmbed(p.youtubeUrl)}" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen></iframe></div>`;
-  return `${header()}<div class="card" style="margin-top:14px"><button class="btn secondary" data-go="portal">← 返回 Portal</button>${gallery}<h2>${esc(p.icon||'⭐')} ${esc(p.title)}</h2><p>${esc(p.subtitle||'')}</p><div style="white-space:pre-wrap;line-height:1.8">${esc(p.content||'')}</div>${p.date||p.place?`<div class="notice" style="margin:12px 0">${p.date?`時間：${esc(p.date)}<br>`:''}${p.place?`地點：${esc(p.place)}`:''}</div>`:''}${action?`<div style="margin-top:14px">${action}</div>`:''}</div>`
+  const date=p.date||p.time||p.eventDate||'';
+  const place=p.place||p.location||p.eventPlace||'';
+  const external=safeUrl(p.url||p.link||p.registrationUrl||'');
+  const pdf=safeUrl(p.pdfUrl||p.pdf||'');
+  const youtube=safeUrl(p.youtubeUrl||p.youtube||'');
+  let actions=[];
+  if(external) actions.push(`<a class="btn full" href="${esc(external)}" target="_blank" rel="noopener">${esc(p.buttonText||'立即報名')}</a>`);
+  if(pdf) actions.push(`<a class="btn full secondary" href="${esc(pdf)}" target="_blank" rel="noopener">📄 ${esc(p.pdfName?`開啟 ${p.pdfName}`:'開啟 PDF')}</a>`);
+  if(youtube) actions.push(`<a class="btn full secondary" href="${esc(youtube)}" target="_blank" rel="noopener">▶️ 開啟 YouTube</a>`);
+  return `${header()}<div class="card" style="margin-top:14px"><button class="btn secondary" data-go="portal">← 返回 Portal</button>${gallery}<h2>${esc(p.icon||'⭐')} ${esc(p.title)}</h2><p>${esc(p.subtitle||'')}</p><div style="white-space:pre-wrap;line-height:1.8">${esc(p.content||p.description||'')}</div>${date||place?`<div class="notice" style="margin:12px 0">${date?`時間：${esc(date)}<br>`:''}${place?`地點：${esc(place)}`:''}</div>`:''}${actions.length?`<div style="display:grid;gap:10px;margin-top:14px">${actions.join('')}</div>`:''}</div>`
 }
-function ytEmbed(url){const m=String(url||'').match(/(?:v=|youtu\.be\/|embed\/)([\w-]+)/); return m?`https://www.youtube.com/embed/${m[1]}`:url}
-
 function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['rules','🧮 積分項目'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
 function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='rules')return scoreRuleManager(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
 function settingsForm(){return `<h2>🏠 首頁設定</h2><label>主標題</label><input id="setMain" value="${esc(S.settings.mainTitle)}"><label>副標題</label><input id="setSub" value="${esc(S.settings.subTitle)}"><label>標語</label><input id="setSlogan" value="${esc(S.settings.slogan)}"><label>Banner 圖片網址</label><input id="setBanner" value="${esc(S.settings.bannerImage)}"><label>標題大小</label><input id="setTitleSize" type="number" value="${S.settings.titleSize||32}"><label>內文字大小</label><input id="setBodySize" type="number" value="${S.settings.bodySize||16}"><button class="btn full" id="saveSettings" type="button">儲存首頁設定</button>`}
@@ -275,16 +279,16 @@ function crudPortal(){
   <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。可貼圖片網址，或由下方選擇檔案。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
   <label>內頁圖片（可一次選多張，最多 6 張）</label><div class="fileNote">點進 Portal 後會依序顯示。若沒有另外上傳，內頁會自動使用封面圖片。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*" multiple>
   <label>貼文內容</label><textarea id="portalContent" placeholder="可貼完整活動說明、段落與換行">${esc(d.content||'')}</textarea>
-  <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||'')}"></div></div>
+  <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||d.time||d.eventDate||'')}" placeholder="例如：7/17（五）18:30～20:30"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||d.location||d.eventPlace||'')}" placeholder="例如：南山干城大樓 9 樓"></div></div>
   <label>報名／外部連結</label><input id="portalUrl" value="${esc(d.url||'')}" placeholder="https://..."><label>按鈕文字</label><input id="portalButtonText" value="${esc(d.buttonText||'')}" placeholder="例如：立即報名">
-  <label>PDF 網址</label><input id="portalPdf" value="${esc(d.pdfUrl||'')}"><label>YouTube 網址</label><input id="portalYoutube" value="${esc(d.youtubeUrl||'')}">
+  <label>PDF 檔案</label><div class="fileNote">可直接選擇 PDF 上傳，不需要先取得網址。上傳完成後會自動填入並儲存連結。</div><input type="file" id="portalPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank" rel="noopener">開啟確認</a></div>`:''}<input id="portalPdf" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="portalPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="portalYoutube" value="${esc(d.youtubeUrl||'')}">
   <div class="formRow"><div><label>排序</label><input id="portalOrder" type="number" value="${d.order||1}"></div><div><label>顯示</label><select id="portalVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div>
   <button class="btn full" id="savePortal" type="button">儲存 Portal</button><button class="btn secondary full" id="newPortal" type="button" style="margin-top:8px">清空新增</button></div></div>`
 }
 async function savePortal(){
   const d=S.edit?.type==='portal'?S.edit.data:{};
   const contentImages=portalDraftImages(d);
-  const data={type:$('#portalType').value,title:$('#portalTitle').value,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:$('#portalImage').value,coverImage:$('#portalImage').value,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,place:$('#portalPlace').value,url:$('#portalUrl').value,buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,youtubeUrl:$('#portalYoutube').value,order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
+  const data={type:$('#portalType').value,title:$('#portalTitle').value,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:$('#portalImage').value,coverImage:$('#portalImage').value,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
   if(!data.title)return toast('請輸入標題');
   if(S.edit?.type==='portal') await updateDoc(doc(db,'portals',S.edit.id),data);
   else{const same=S.portals.find(p=>norm(p.title)===norm(data.title)); if(same) await updateDoc(doc(db,'portals',same.id),data); else await addDoc(col('portals'),{...data,createdAt:serverTimestamp()});}
@@ -429,6 +433,24 @@ async function handleInnerPortalFiles(input){
   try{const arr=[];for(const f of files)arr.push(await compressImageFile(f,1400,240000));if(S.edit?.type==='portal'){S.edit.data.contentImages=arr}else S.portalDraftImages=arr;render();toast('內頁圖片已加入，請按儲存 Portal')}catch(e){console.error(e);toast('內頁圖片處理失敗')}
 }
 
+async function handlePortalPdfFile(input){
+  const file=input.files?.[0];
+  if(!file)return;
+  if(file.type!=='application/pdf'&&!file.name.toLowerCase().endsWith('.pdf')){toast('請選擇 PDF 檔案');input.value='';return;}
+  if(file.size>25*1024*1024){toast('PDF 請小於 25MB');input.value='';return;}
+  try{
+    toast('PDF 上傳中…');
+    const safeName=file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g,'_');
+    const path=`portal-pdfs/${Date.now()}-${safeName}`;
+    const snap=await uploadBytes(storageRef(storage,path),file,{contentType:'application/pdf'});
+    const url=await getDownloadURL(snap.ref);
+    const urlInput=$('#portalPdf');const nameInput=$('#portalPdfName');
+    if(urlInput)urlInput.value=url;if(nameInput)nameInput.value=file.name;
+    if(S.edit?.type==='portal'){S.edit.data.pdfUrl=url;S.edit.data.pdfName=file.name;}
+    toast('PDF 已上傳，請按儲存 Portal');
+    render();
+  }catch(e){console.error(e);toast('PDF 上傳失敗，請確認 Firebase Storage 規則');}
+}
 function render(){nav(); const check=new URLSearchParams(location.search).get('checkin'); if(check){app.innerHTML=checkinPage(check); bind(); return;} if(S.page==='home') app.innerHTML=home(); if(S.page==='score') app.innerHTML=scorePage(); if(S.page==='qr') app.innerHTML=qr(); if(S.page==='ranking') app.innerHTML=ranking(); if(S.page==='portal') app.innerHTML=portal(); if(S.page==='admin') app.innerHTML=admin(); bind();}
 function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule))); document.querySelectorAll('[data-restore-rule]').forEach(b=>b.onclick=()=>restoreScoreRule(Number(b.dataset.restoreRule)));
  $('#manualWeekToggle')&&($('#manualWeekToggle').onchange=e=>{S.scoreWeekManual=e.target.checked;S.scoreWeek=S.scoreWeekManual?(S.scoreWeek||currentWeekNumber()):currentWeekNumber();render()}); $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeekManual=true;S.scoreWeek=Number(e.target.value||currentWeekNumber())}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Number(S.counts[mode][k]||0)+Number(b.dataset.delta));render()}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings);
@@ -439,7 +461,7 @@ function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{
  $('#saveSettings')&&($('#saveSettings').onclick=saveSettings); $('#saveAnn')&&($('#saveAnn').onclick=saveAnn); $('#newAnn')&&($('#newAnn').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-ann]').forEach(b=>b.onclick=()=>{const d=S.announcements.find(x=>x.id===b.dataset.loadAnn);S.edit={type:'ann',id:b.dataset.loadAnn,data:d};render()}); document.querySelectorAll('[data-del-ann]').forEach(b=>b.onclick=async()=>{if(confirm('刪除公告？')){await deleteDoc(doc(db,'announcements',b.dataset.delAnn));toast('已刪除')}});
  $('#saveTeam')&&($('#saveTeam').onclick=saveTeam); $('#newTeam')&&($('#newTeam').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-team]').forEach(b=>b.onclick=()=>{const d=S.teams.find(x=>x.id===b.dataset.loadTeam);S.edit={type:'team',id:b.dataset.loadTeam,data:d};render()}); document.querySelectorAll('[data-del-team]').forEach(b=>b.onclick=async()=>{if(confirm('刪除隊伍？')){await deleteDoc(doc(db,'teams',b.dataset.delTeam));toast('已刪除')}});
  $('#saveMember')&&($('#saveMember').onclick=saveMember); $('#newMember')&&($('#newMember').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-member]').forEach(b=>b.onclick=()=>{const d=S.members.find(x=>x.id===b.dataset.loadMember);S.edit={type:'member',id:b.dataset.loadMember,data:d};render()}); document.querySelectorAll('[data-del-member]').forEach(b=>b.onclick=async()=>{if(confirm('刪除人員？')){await deleteDoc(doc(db,'members',b.dataset.delMember));toast('已刪除')}});
- $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;S.portalDraftImages=[];render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); $('#bulkPortalFiles')&&($('#bulkPortalFiles').onchange=e=>handleBulkPortalFiles(e.target)); $('#applyBulkPortal')&&($('#applyBulkPortal').onclick=applyBulkPortalImages); $('#portalInnerFiles')&&($('#portalInnerFiles').onchange=e=>handleInnerPortalFiles(e.target)); document.querySelectorAll('[data-remove-inner]').forEach(b=>b.onclick=()=>{const arr=[...portalDraftImages(S.edit?.data||{})];arr.splice(Number(b.dataset.removeInner),1);if(S.edit?.type==='portal')S.edit.data.contentImages=arr;else S.portalDraftImages=arr;render()}); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.portalDraftImages=[];render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}});
+ $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;S.portalDraftImages=[];render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); $('#bulkPortalFiles')&&($('#bulkPortalFiles').onchange=e=>handleBulkPortalFiles(e.target)); $('#applyBulkPortal')&&($('#applyBulkPortal').onclick=applyBulkPortalImages); $('#portalInnerFiles')&&($('#portalInnerFiles').onchange=e=>handleInnerPortalFiles(e.target)); $('#portalPdfFile')&&($('#portalPdfFile').onchange=e=>handlePortalPdfFile(e.target)); document.querySelectorAll('[data-remove-inner]').forEach(b=>b.onclick=()=>{const arr=[...portalDraftImages(S.edit?.data||{})];arr.splice(Number(b.dataset.removeInner),1);if(S.edit?.type==='portal')S.edit.data.contentImages=arr;else S.portalDraftImages=arr;render()}); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.portalDraftImages=[];render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}});
  document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeSet)); $('#importLegacy')&&($('#importLegacy').onclick=()=>importLegacyTeams(true));
 }
 $('#fab').onclick=()=>{$('#quickModal').style.display='flex'}; $('#closeQuick').onclick=()=>{$('#quickModal').style.display='none'}; $('#quickModal').addEventListener('click',e=>{if(e.target.id==='quickModal')$('#quickModal').style.display='none'}); document.querySelectorAll('#quickModal [data-go]').forEach(b=>b.onclick=()=>{$('#quickModal').style.display='none';S.scoreMode=b.dataset.scoremode;go('score')});
