@@ -32,7 +32,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
-const AMR_BUILD = '1.0-complete-20260711-firestore-images-free';
+const AMR_BUILD = '1.0-complete-20260711-firestore-images-v2';
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
   authDomain: "team-465.firebaseapp.com",
@@ -270,38 +270,24 @@ function checkinPage(id){const e=S.events.find(x=>x.id===id); if(!e)return `<div
 async function submitCheckin(eid){const e=S.events.find(x=>x.id===eid); const kind=$('#ckKind').value; if(kind==='member'){const mid=$('#ckMember').value; const m=S.members.find(x=>x.id===mid); if(!m)return toast('請選姓名'); await addDoc(col(e.type==='meeting'?'attendance':'checkins'),{eventId:eid,eventType:e.type,memberId:m.id,memberName:m.name,teamId:m.teamId,teamName:m.teamName||teamName(m.teamId),status:'出席',isFriend:false,createdAt:serverTimestamp()}); if(e.type!=='meeting') await addDoc(col('score_history'),{mode:'personal',teamId:m.teamId,teamName:m.teamName||teamName(m.teamId),memberId:m.id,memberName:m.name,items:[{label:typeName(e.type)+'出席',count:1,points:2,score:2}],total:2,source:'QR自動加分',deleted:false,createdAt:serverTimestamp()}); } else {const name=$('#friendName').value.trim(); if(!name)return toast('請輸入新朋友姓名'); await addDoc(col('checkins'),{eventId:eid,eventType:e.type,name,phone:$('#friendPhone').value,referrer:$('#referrer').value,isFriend:true,createdAt:serverTimestamp()}); }
  toast('簽到完成');}
 
-
-function firestoreImageDocId(ownerType,ownerId,slot){return `${ownerType}_${ownerId}_${slot+1}`.replace(/[^a-zA-Z0-9_-]/g,'_')}
-function firestoreImageFor(ownerType,ownerId,slot){
-  return (S.portalImages||[]).find(x=>x.ownerType===ownerType&&x.ownerId===ownerId&&Number(x.slot)===Number(slot)&&x.deleted!==true)?.data||'';
-}
-function readManagedImageSlots(ownerType,ownerId,fallback){
-  const base=readImageSlots(fallback||{});
-  if(!ownerId)return base;
-  return Array.from({length:6},(_,i)=>firestoreImageFor(ownerType,ownerId,i)||base[i]||'');
-}
+function readImageSlots(x){const arr=Array.from({length:6},(_,i)=>String(x?.[`contentImage${i+1}`]||'').trim());if(arr.some(Boolean))return arr;const old=Array.isArray(x?.contentImages)?x.contentImages.flat(Infinity).filter(v=>typeof v==='string').slice(0,6):[];while(old.length<6)old.push('');return old;}
+function slotPatch(imgs){const out={contentImages:imgs.slice(0,6)};for(let i=0;i<6;i++)out[`contentImage${i+1}`]=imgs[i]||'';return out;}
+function firestoreImageDocId(ownerType,ownerId,slot){return `${ownerType}_${ownerId}_${Number(slot)+1}`.replace(/[^a-zA-Z0-9_-]/g,'_')}
+function firestoreImageFor(ownerType,ownerId,slot){return (S.portalImages||[]).find(x=>x.ownerType===ownerType&&x.ownerId===ownerId&&Number(x.slot)===Number(slot)&&x.deleted!==true)?.data||''}
+function readManagedImageSlots(ownerType,ownerId,fallback){const old=readImageSlots(fallback||{});if(!ownerId)return old;return Array.from({length:6},(_,i)=>firestoreImageFor(ownerType,ownerId,i)||old[i]||'')}
 async function saveFirestorePortalImage(ownerType,ownerId,slot,file){
   if(!ownerId)throw new Error('找不到內容 ID，請先儲存標題');
-  const data=await compressImageFile(file,1200,620000);
-  if(data.length>800000)throw new Error('圖片壓縮後仍太大，請換較小圖片');
+  const data=await compressImageFile(file,1000,430000);
+  if(data.length>650000)throw new Error('圖片壓縮後仍太大，請換較小圖片');
   const id=firestoreImageDocId(ownerType,ownerId,slot);
   const payload={ownerType,ownerId,slot:Number(slot),data,mime:'image/jpeg',deleted:false,updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||'anonymous'};
   await setDoc(doc(db,'portal_images',id),payload,{merge:true});
   const verify=await getDoc(doc(db,'portal_images',id));
   if(!verify.exists()||!verify.data().data)throw new Error('圖片寫入 Firestore 後驗證失敗');
-  const local={id,...verify.data()};
-  const idx=(S.portalImages||[]).findIndex(x=>x.id===id);
-  if(idx>=0)S.portalImages[idx]=local;else S.portalImages.push(local);
+  const local={id,...verify.data()};const idx=(S.portalImages||[]).findIndex(x=>x.id===id);if(idx>=0)S.portalImages[idx]=local;else S.portalImages.push(local);
   return data;
 }
-async function removeFirestorePortalImage(ownerType,ownerId,slot){
-  if(!ownerId)return;
-  const id=firestoreImageDocId(ownerType,ownerId,slot);
-  await deleteDoc(doc(db,'portal_images',id));
-  S.portalImages=(S.portalImages||[]).filter(x=>x.id!==id);
-}
-function readImageSlots(x){const arr=Array.from({length:6},(_,i)=>String(x?.[`contentImage${i+1}`]||'').trim());if(arr.some(Boolean))return arr;const old=Array.isArray(x?.contentImages)?x.contentImages.flat(Infinity).filter(v=>typeof v==='string').slice(0,6):[];while(old.length<6)old.push('');return old;}
-function slotPatch(imgs){const out={contentImages:imgs.slice(0,6)};for(let i=0;i<6;i++)out[`contentImage${i+1}`]=imgs[i]||'';return out;}
+async function removeFirestorePortalImage(ownerType,ownerId,slot){if(!ownerId)return;const id=firestoreImageDocId(ownerType,ownerId,slot);await deleteDoc(doc(db,'portal_images',id));S.portalImages=(S.portalImages||[]).filter(x=>x.id!==id)}
 function entryImg(x){const ownerType=x?.portalId?'entry':'portal';const first=readManagedImageSlots(ownerType,x?.id,x).find(Boolean)||'';return x?.coverImage||x?.image||x?.imageUrl||first||''}
 function portalEntriesFor(portalId){return (S.portalEntries||[]).filter(x=>x.portalId===portalId&&x.visible!==false).sort((a,b)=>Number(a.order||99)-Number(b.order||99))}
 function hasLegacyPortalContent(p){return !!(p&&(p.content||p.description||p.date||p.place||p.url||p.pdfUrl||p.youtubeUrl||(Array.isArray(p.contentImages)&&p.contentImages.length)))}
@@ -371,7 +357,7 @@ function crudPortal(){
   <label>類型</label><select id="portalType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select>
   <label>標題</label><input id="portalTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="portalSub" value="${esc(d.subtitle||'')}"><label>Icon</label><input id="portalIcon" value="${esc(d.icon||'⭐')}">
   <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。可貼圖片網址，或由下方選擇檔案。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
-  <label>Portal 內頁圖片（第 1～6 張，逐張上傳）</label><div class="notice">每個位置一次選一張。圖片會壓縮後逐張存入免費 Firestore，不使用 Storage。</div><div class="bulkPreview">${Array.from({length:6},(_,i)=>{const src=inner[i]||'';return `<figure>${src?`<img src="${src}">`:`<div style="aspect-ratio:16/9;border:1px dashed var(--line);border-radius:14px;display:grid;place-items:center;color:var(--muted)">圖片 ${i+1}</div>`}<figcaption>第 ${i+1} 張</figcaption><input type="file" data-portal-image-slot="${i}" accept="image/*">${src?`<button type="button" class="btn small danger full" data-remove-portal-slot="${i}">移除</button>`:''}</figure>`}).join('')}</div>
+  <label>Portal 內頁圖片（第 1～6 張，逐張上傳）</label><div class="notice">每個位置一次選一張。既有 Portal 會在上傳成功後立即寫入 Firebase。</div><div class="bulkPreview">${Array.from({length:6},(_,i)=>{const src=inner[i]||'';return `<figure>${src?`<img src="${src}">`:`<div style="aspect-ratio:16/9;border:1px dashed var(--line);border-radius:14px;display:grid;place-items:center;color:var(--muted)">圖片 ${i+1}</div>`}<figcaption>第 ${i+1} 張</figcaption><input type="file" data-portal-image-slot="${i}" accept="image/*">${src?`<button type="button" class="btn small danger full" data-remove-portal-slot="${i}">移除</button>`:''}</figure>`}).join('')}</div>
   <label>貼文內容</label><textarea id="portalContent" placeholder="可貼完整活動說明、段落與換行">${esc(d.content||'')}</textarea>
   <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||d.time||d.eventDate||'')}" placeholder="例如：7/17（五）18:30～20:30"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||d.location||d.eventPlace||'')}" placeholder="例如：南山干城大樓 9 樓"></div></div>
   <label>報名／外部連結</label><input id="portalUrl" value="${esc(d.url||'')}" placeholder="https://..."><label>按鈕文字</label><input id="portalButtonText" value="${esc(d.buttonText||'')}" placeholder="例如：立即報名">
@@ -382,17 +368,14 @@ function crudPortal(){
 }
 async function savePortal(){
   const d=S.edit?.type==='portal'?S.edit.data:(S.portalDraftForm||{});
-  const title=$('#portalTitle').value.trim();
-  if(!title)return toast('請輸入標題');
+  const title=$('#portalTitle').value.trim();if(!title)return toast('請輸入標題');
   try{
-    toast('正在整理圖片並儲存 Portal…');
+    toast('正在儲存 Portal…');
     const coverImage=$('#portalImage').value||portalImg(d)||'';
-    const contentImages=readImageSlots(d);
-    const data={type:$('#portalType').value,title,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:coverImage,coverImage,...slotPatch(contentImages),content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
-    let targetId=S.edit?.type==='portal'?S.edit.id:null;
-    if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
-    await saveCollectionRecord('portals',targetId,data);
-    S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.portalDraftImages=[];S.portalDraftForm=null;render();toast('Portal 內容已儲存');
+    const data={type:$('#portalType').value,title,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:coverImage,coverImage,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
+    let targetId=S.edit?.type==='portal'?S.edit.id:null;if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
+    const id=await saveCollectionRecord('portals',targetId,data);
+    S.edit={type:'portal',id,data:{id,...data}};render();toast('Portal 已儲存');
   }catch(e){console.error(e);toast(`Portal 儲存失敗：${e?.message||e}`)}
 }
 async function applyBulkPortalImages(){
@@ -401,8 +384,7 @@ async function applyBulkPortalImages(){
   let items=uniquePortalItems(S.portals).slice(0,6);
   if(items.length<6){toast('Portal 項目不足 6 個，請稍後再試');return;}
   for(let i=0;i<6;i++){
-    const url=await ensureStorageImage(imgs[i],'portal-images/covers');
-    await updateDoc(doc(db,'portals',items[i].id),{image:url,coverImage:url,updatedAt:serverTimestamp()});
+    await updateDoc(doc(db,'portals',items[i].id),{image:imgs[i],coverImage:imgs[i],updatedAt:serverTimestamp()});
   }
   S.bulkPortalImages=[];toast('六張封面已依順序儲存');render();
 }
@@ -412,7 +394,7 @@ function portalEntryManager(portalId){
   const entries=(S.portalEntries||[]).filter(x=>x.portalId===portalId).sort((a,b)=>Number(a.order||99)-Number(b.order||99));
   const d=S.entryEdit?.data||(S.entryDraftForm||{});
   const imgs=entryDraftImages(d);
-  return `<div class="entryAdmin"><h2>📚 ${esc(portal?.title||'Portal')}｜專區內容</h2><div class="notice">此專區可以新增多篇活動、公文、圖片貼文、外部連結或 YouTube。每篇內容彼此獨立，可單獨修改、隱藏或刪除。</div><div class="split" style="margin-top:14px"><div>${entries.map(e=>`<div class="listItem"><div class="grow"><b>${esc(e.title)}</b><p>${entryTypeName(e.type)}｜${e.visible===false?'隱藏':'顯示'}｜排序 ${e.order||''}</p></div><button class="btn small secondary" data-load-entry="${e.id}">編輯</button><button class="btn small danger" data-del-entry="${e.id}">刪除</button></div>`).join('')||'<div class="empty">尚無內容，請在右側新增第一篇。</div>'}</div><div><h3>${S.entryEdit?'編輯內容':'新增內容'}</h3><label>內容類型</label><select id="entryType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="article" ${d.type==='article'?'selected':''}>圖文內容</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select><label>標題</label><input id="entryTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="entrySub" value="${esc(d.subtitle||'')}"><label>封面圖片</label><input id="entryCover" value="${esc(entryImg(d))}">${entryImg(d)?`<img src="${entryImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="entryCoverFile" accept="image/*"><label>內頁圖片（第 1～6 張，逐張上傳）</label><div class="notice">先輸入標題，再從圖片 1 開始一張一張選。每張會壓縮後獨立存入免費 Firestore。</div><div class="bulkPreview">${Array.from({length:6},(_,i)=>{const src=imgs[i]||'';return `<figure>${src?`<img src="${src}">`:`<div style="aspect-ratio:16/9;border:1px dashed var(--line);border-radius:14px;display:grid;place-items:center;color:var(--muted)">圖片 ${i+1}</div>`}<figcaption>第 ${i+1} 張</figcaption><input type="file" data-entry-image-slot="${i}" accept="image/*">${src?`<button type="button" class="btn small danger full" data-remove-entry-slot="${i}">移除</button>`:''}</figure>`}).join('')}</div><label>貼文內容</label><textarea id="entryContent">${esc(d.content||'')}</textarea><div class="formRow"><div><label>時間</label><input id="entryDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="entryPlace" value="${esc(d.place||'')}"></div></div><label>報名／外部連結</label><input id="entryUrl" value="${esc(d.url||'')}"><label>按鈕文字</label><input id="entryButton" value="${esc(d.buttonText||'')}"><label>PDF 檔案</label><input type="file" id="entryPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank">開啟確認</a></div>`:''}<input id="entryPdfUrl" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="entryPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="entryYoutube" value="${esc(d.youtubeUrl||'')}"><div class="formRow"><div><label>排序</label><input id="entryOrder" type="number" value="${Number(d.order||entries.length+1)}"></div><div><label>顯示</label><select id="entryVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div><button class="btn full" id="saveEntry" type="button">儲存專區內容</button><button class="btn secondary full" id="newEntry" type="button" style="margin-top:8px">清空新增下一篇</button></div></div></div>`
+  return `<div class="entryAdmin"><h2>📚 ${esc(portal?.title||'Portal')}｜專區內容</h2><div class="notice">此專區可以新增多篇活動、公文、圖片貼文、外部連結或 YouTube。每篇內容彼此獨立，可單獨修改、隱藏或刪除。</div><div class="split" style="margin-top:14px"><div>${entries.map(e=>`<div class="listItem"><div class="grow"><b>${esc(e.title)}</b><p>${entryTypeName(e.type)}｜${e.visible===false?'隱藏':'顯示'}｜排序 ${e.order||''}</p></div><button class="btn small secondary" data-load-entry="${e.id}">編輯</button><button class="btn small danger" data-del-entry="${e.id}">刪除</button></div>`).join('')||'<div class="empty">尚無內容，請在右側新增第一篇。</div>'}</div><div><h3>${S.entryEdit?'編輯內容':'新增內容'}</h3><label>內容類型</label><select id="entryType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="article" ${d.type==='article'?'selected':''}>圖文內容</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select><label>標題</label><input id="entryTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="entrySub" value="${esc(d.subtitle||'')}"><label>封面圖片</label><input id="entryCover" value="${esc(entryImg(d))}">${entryImg(d)?`<img src="${entryImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="entryCoverFile" accept="image/*"><label>內頁圖片（第 1～6 張，逐張上傳）</label><div class="notice">先輸入標題，再從圖片 1 開始一張一張選。每張上傳成功後會立即自動儲存。</div><div class="bulkPreview">${Array.from({length:6},(_,i)=>{const src=imgs[i]||'';return `<figure>${src?`<img src="${src}">`:`<div style="aspect-ratio:16/9;border:1px dashed var(--line);border-radius:14px;display:grid;place-items:center;color:var(--muted)">圖片 ${i+1}</div>`}<figcaption>第 ${i+1} 張</figcaption><input type="file" data-entry-image-slot="${i}" accept="image/*">${src?`<button type="button" class="btn small danger full" data-remove-entry-slot="${i}">移除</button>`:''}</figure>`}).join('')}</div><label>貼文內容</label><textarea id="entryContent">${esc(d.content||'')}</textarea><div class="formRow"><div><label>時間</label><input id="entryDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="entryPlace" value="${esc(d.place||'')}"></div></div><label>報名／外部連結</label><input id="entryUrl" value="${esc(d.url||'')}"><label>按鈕文字</label><input id="entryButton" value="${esc(d.buttonText||'')}"><label>PDF 檔案</label><input type="file" id="entryPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank">開啟確認</a></div>`:''}<input id="entryPdfUrl" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="entryPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="entryYoutube" value="${esc(d.youtubeUrl||'')}"><div class="formRow"><div><label>排序</label><input id="entryOrder" type="number" value="${Number(d.order||entries.length+1)}"></div><div><label>顯示</label><select id="entryVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div><button class="btn full" id="saveEntry" type="button">儲存專區內容</button><button class="btn secondary full" id="newEntry" type="button" style="margin-top:8px">清空新增下一篇</button></div></div></div>`
 }
 
 function snapshotEntryForm(){
@@ -422,39 +404,28 @@ function snapshotEntryForm(){
 async function savePortalEntry(){
   if(!S.edit?.id)return toast('請先選擇 Portal');
   const title=$('#entryTitle').value.trim();if(!title)return toast('請輸入內容標題');
-  try{toast('正在儲存專區內容…');const coverImage=$('#entryCover').value||entryImg(S.entryEdit?.data||{})||'';const contentImages=readImageSlots(S.entryEdit?.data||{});const data={portalId:S.edit.id,portalTitle:S.edit.data.title,type:$('#entryType').value,title,subtitle:$('#entrySub').value,coverImage,image:coverImage,...slotPatch(contentImages),content:$('#entryContent').value,date:$('#entryDate').value,place:$('#entryPlace').value,url:safeUrl($('#entryUrl').value),buttonText:$('#entryButton').value,pdfUrl:$('#entryPdfUrl').value,pdfName:$('#entryPdfName').value,youtubeUrl:safeUrl($('#entryYoutube').value),order:Number($('#entryOrder').value||99),visible:$('#entryVisible').value==='true',updatedAt:serverTimestamp()};await saveCollectionRecord('portal_entries',S.entryEdit?.id||null,data);S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;render();toast('專區內容已儲存')}catch(e){console.error(e);toast(`內容儲存失敗：${e?.message||e}`)}}
+  try{
+    toast('正在儲存專區內容…');
+    const coverImage=$('#entryCover').value||entryImg(S.entryEdit?.data||{})||'';
+    const data={portalId:S.edit.id,portalTitle:S.edit.data.title,type:$('#entryType').value,title,subtitle:$('#entrySub').value,coverImage,image:coverImage,content:$('#entryContent').value,date:$('#entryDate').value,place:$('#entryPlace').value,url:safeUrl($('#entryUrl').value),buttonText:$('#entryButton').value,pdfUrl:$('#entryPdfUrl').value,pdfName:$('#entryPdfName').value,youtubeUrl:safeUrl($('#entryYoutube').value),order:Number($('#entryOrder').value||99),visible:$('#entryVisible').value==='true',updatedAt:serverTimestamp()};
+    const id=await saveCollectionRecord('portal_entries',S.entryEdit?.id||null,data);
+    S.entryEdit={id,data:{id,...data}};S.entryDraftImages=[];S.entryDraftForm=null;render();toast('專區內容已儲存');
+  }catch(e){console.error(e);toast(`內容儲存失敗：${e?.message||e}`)}
+}
 async function handleEntryCover(input){
   const f=input.files?.[0];if(!f)return;
   const form=snapshotEntryForm();
   try{toast('封面圖片上傳中…');const url=await uploadCompressedImageFile(f,'portal-entry-images/covers',1600,700000);if(S.entryEdit)S.entryEdit.data={...S.entryEdit.data,...form,coverImage:url,image:url};else S.entryDraftForm={...(S.entryDraftForm||{}),...form,coverImage:url,image:url};render();toast('封面已上傳，請按儲存專區內容')}catch(e){toast(`封面上傳失敗：${e?.message||e}`)}finally{input.value=''}
 }
 async function handleEntryImageSlot(input,slot){
-  const file=input.files?.[0];if(!file)return;
-  const form=snapshotEntryForm();
-  if(!String(form.title||'').trim()){toast('請先輸入內容標題，再上傳圖片');input.value='';return;}
-  input.disabled=true;
+  const file=input.files?.[0];if(!file)return;const form=snapshotEntryForm();if(!String(form.title||'').trim()){toast('請先輸入內容標題，再上傳圖片');input.value='';return;}input.disabled=true;
   try{
     let entryId=S.entryEdit?.id||null;
-    if(!entryId){
-      const baseData={portalId:S.edit.id,portalTitle:S.edit.data.title,...form,updatedAt:serverTimestamp()};
-      entryId=await saveCollectionRecord('portal_entries',null,baseData);
-      const fresh=await getDoc(doc(db,'portal_entries',entryId));
-      S.entryEdit={id:entryId,data:{id:entryId,...fresh.data()}};
-      S.entryDraftForm=null;
-    }
-    toast(`正在儲存第 ${slot+1} 張圖片…`);
-    await saveFirestorePortalImage('entry',entryId,slot,file);
-    render();
-    toast(`第 ${slot+1} 張圖片已儲存，可立即預覽與移除`);
+    if(!entryId){entryId=await saveCollectionRecord('portal_entries',null,{portalId:S.edit.id,portalTitle:S.edit.data.title,...form,updatedAt:serverTimestamp()});const fresh=await getDoc(doc(db,'portal_entries',entryId));S.entryEdit={id:entryId,data:{id:entryId,...fresh.data()}};S.entryDraftForm=null;}
+    toast(`正在儲存第 ${slot+1} 張圖片…`);await saveFirestorePortalImage('entry',entryId,slot,file);render();toast(`第 ${slot+1} 張圖片已儲存，可立即預覽與移除`);
   }catch(e){console.error(e);toast(`圖片儲存失敗：${e?.message||e}`)}finally{input.disabled=false;input.value=''}
 }
-async function removeEntryImageSlot(slot){
-  try{
-    if(!S.entryEdit?.id)return toast('這張圖片尚未正式儲存');
-    await removeFirestorePortalImage('entry',S.entryEdit.id,slot);
-    render();toast(`已移除第 ${slot+1} 張圖片`);
-  }catch(e){console.error(e);toast(`移除失敗：${e?.message||e}`)}
-}
+async function removeEntryImageSlot(slot){try{if(!S.entryEdit?.id)return toast('這張圖片尚未正式儲存');await removeFirestorePortalImage('entry',S.entryEdit.id,slot);render();toast(`已移除第 ${slot+1} 張圖片`)}catch(e){console.error(e);toast(`移除失敗：${e?.message||e}`)}}
 async function handleEntryPdf(input){
   const file=input.files?.[0];if(!file)return;
   const form=snapshotEntryForm();
@@ -600,26 +571,8 @@ async function uploadCompressedImageFile(file,folder='portal-images',max=1600,ta
   const data=await compressImageFile(file,max,targetBytes);
   return await ensureStorageImage(data,folder);
 }
-async function fileToData(input,target){
-  const f=input.files?.[0];if(!f)return;toast('封面圖片上傳中…');
-  try{
-    const url=await uploadCompressedImageFile(f,'portal-images/covers',1600,700000);
-    $(target).value=url;
-    if(S.edit?.type==='portal'){S.edit.data.image=url;S.edit.data.coverImage=url;}
-    toast('封面圖片已上傳，請按儲存 Portal');
-  }catch(e){console.error(e);toast(`圖片上傳失敗：${e?.message||e}`)}
-}
-async function handleBulkPortalFiles(input){
-  const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');toast('正在上傳六張封面…');
-  try{
-    S.bulkPortalImages=[];
-    for(let i=0;i<files.length;i++){
-      toast(`正在上傳第 ${i+1}/6 張…`);
-      S.bulkPortalImages.push(await uploadCompressedImageFile(files[i],'portal-images/covers',1200,420000));
-    }
-    render();toast('六張圖片已上傳，可確認順序後套用');
-  }catch(e){console.error(e);S.bulkPortalImages=[];toast(`六張圖片上傳失敗：${e?.message||e}`)}
-}
+async function fileToData(input,target){const f=input.files?.[0];if(!f)return;try{toast('封面圖片處理中…');const data=await compressImageFile(f,1200,430000);$(target).value=data;if(S.edit?.type==='portal'){S.edit.data.image=data;S.edit.data.coverImage=data;}render();toast('封面圖片已準備，請按儲存 Portal')}catch(e){console.error(e);toast(`圖片處理失敗：${e?.message||e}`)}finally{input.value=''}}
+async function handleBulkPortalFiles(input){const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');try{S.bulkPortalImages=[];for(let i=0;i<6;i++){toast(`正在處理第 ${i+1}/6 張…`);S.bulkPortalImages.push(await compressImageFile(files[i],1000,350000));}render();toast('六張封面已準備，可確認順序後儲存')}catch(e){S.bulkPortalImages=[];toast(`六張圖片處理失敗：${e?.message||e}`)}finally{input.value=''}}
 function snapshotPortalForm(){
   const get=(id,fb='')=>document.querySelector(id)?.value ?? fb;
   return {
@@ -641,23 +594,10 @@ function snapshotPortalForm(){
   };
 }
 async function handlePortalImageSlot(input,slot){
-  const file=input.files?.[0];if(!file)return;
-  if(!S.edit?.id){toast('請先選擇左側 Portal 並按編輯');input.value='';return;}
-  input.disabled=true;
-  try{
-    toast(`正在儲存 Portal 第 ${slot+1} 張圖片…`);
-    await saveFirestorePortalImage('portal',S.edit.id,slot,file);
-    render();toast(`Portal 第 ${slot+1} 張圖片已儲存，可立即預覽與移除`);
-  }catch(e){console.error(e);toast(`圖片儲存失敗：${e?.message||e}`)}finally{input.disabled=false;input.value=''}
+  const file=input.files?.[0];if(!file)return;if(!S.edit?.id){toast('請先選擇左側 Portal 並按編輯');input.value='';return;}input.disabled=true;
+  try{toast(`正在儲存 Portal 第 ${slot+1} 張圖片…`);await saveFirestorePortalImage('portal',S.edit.id,slot,file);render();toast(`Portal 第 ${slot+1} 張圖片已儲存，可立即預覽與移除`)}catch(e){console.error(e);toast(`圖片儲存失敗：${e?.message||e}`)}finally{input.disabled=false;input.value=''}
 }
-async function removePortalImageSlot(slot){
-  try{
-    if(!S.edit?.id)return;
-    await removeFirestorePortalImage('portal',S.edit.id,slot);
-    render();toast(`已移除 Portal 第 ${slot+1} 張圖片`);
-  }catch(e){console.error(e);toast(`移除失敗：${e?.message||e}`)}
-}
-
+async function removePortalImageSlot(slot){try{if(!S.edit?.id)return;await removeFirestorePortalImage('portal',S.edit.id,slot);render();toast(`已移除 Portal 第 ${slot+1} 張圖片`)}catch(e){console.error(e);toast(`移除失敗：${e?.message||e}`)}}
 async function handlePortalPdfFile(input){
   const file=input.files?.[0];
   if(!file)return;
