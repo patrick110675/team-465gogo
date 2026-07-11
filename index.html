@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>AMR Platform 1.0｜積分規則自動週數修正版</title>
+  <meta name="amr-build" content="2026-07-11-save-audit-v1"><title>AMR Platform 1.0｜積分規則自動週數修正版</title>
   <meta name="theme-color" content="#dff1ff" />
   <style>
     :root{--bg:#eaf6ff;--bg2:#d8efff;--card:#ffffff;--card2:#f4fbff;--text:#123049;--muted:#68849a;--primary:#2f80ed;--primary2:#76bfff;--accent:#f6c453;--danger:#ef4444;--ok:#16a34a;--line:#cfe8fb;--shadow:0 14px 35px rgba(31,99,151,.16);--radius:24px;--font:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;--titleSize:32px;--bodySize:16px}
@@ -27,7 +27,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
 const firebaseConfig = {
@@ -49,6 +49,7 @@ onAuthStateChanged(auth,u=>{currentUser=u;});
 
 const $ = s=>document.querySelector(s);
 const app = $('#app');
+window.addEventListener('unhandledrejection',e=>{console.error('Unhandled promise rejection',e.reason);toast(`操作失敗：${e.reason?.message||e.reason||'未知錯誤'}`)});
 const toast = msg=>{const t=$('#toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',1800)};
 const esc = v => String(v??'').replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':'&quot;'}[c]));
 function portalImg(p){return p?.coverImage || p?.image || p?.imageUrl || p?.bannerImage || ''}
@@ -116,7 +117,20 @@ function currentWeekNumber(){
 let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],scores:[],events:[],attendance:[],checkins:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,edit:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:null,scoreWeekManual:false,ruleMode:'personal',ruleEdit:null};
 function col(name){return collection(db,name)}
 function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); render();},()=>{})}
-onSnapshot(doc(db,'platform','settings'),snap=>{S.settings={...defaultSettings,...(snap.exists()?snap.data():{})}; applyTheme(); render();});
+let settingsWriteDepth=0;
+function stableValue(v){if(v===undefined)return null;if(Array.isArray(v))return v.map(stableValue);if(v&&typeof v==='object'){const out={};Object.keys(v).sort().forEach(k=>{if(k!=='updatedAt')out[k]=stableValue(v[k])});return out}return v}
+function sameValue(a,b){return JSON.stringify(stableValue(a))===JSON.stringify(stableValue(b))}
+async function writeSettingsPatch(patch,successText='設定已儲存'){
+  settingsWriteDepth++;
+  try{
+    const ref=doc(db,'platform','settings');
+    await runTransaction(db,async tx=>{const snap=await tx.get(ref);const current=snap.exists()?snap.data():{};tx.set(ref,{...current,...patch,updatedAt:serverTimestamp()},{merge:false})});
+    const verify=await getDoc(ref);if(!verify.exists())throw new Error('Firebase 找不到設定文件');const server=verify.data();
+    for(const [k,v] of Object.entries(patch)){if(!sameValue(server[k],v))throw new Error(`欄位 ${k} 儲存後驗證不一致`)}
+    S.settings={...defaultSettings,...server};applyTheme();render();toast(successText);return server;
+  }finally{settingsWriteDepth=Math.max(0,settingsWriteDepth-1)}
+}
+onSnapshot(doc(db,'platform','settings'),snap=>{if(settingsWriteDepth>0)return;S.settings={...defaultSettings,...(snap.exists()?snap.data():{})};applyTheme();render();});
 ['teams','members','announcements','portals','score_history','events','attendance','checkins'].forEach(n=>listen(n,n==='score_history'?'scores':n));
 async function seedPortals(){const qs=await getDocs(col('portals')); if(qs.empty){for(const p of defaultPortals) await addDoc(col('portals'),{...p,createdAt:serverTimestamp()});}}
 setTimeout(seedPortals,1200);
@@ -251,13 +265,18 @@ function portalDetail(p){
 function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['rules','🧮 積分項目'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
 function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='rules')return scoreRuleManager(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
 function settingsForm(){return `<h2>🏠 首頁設定</h2><label>主標題</label><input id="setMain" value="${esc(S.settings.mainTitle)}"><label>副標題</label><input id="setSub" value="${esc(S.settings.subTitle)}"><label>標語</label><input id="setSlogan" value="${esc(S.settings.slogan)}"><label>Banner 圖片網址</label><input id="setBanner" value="${esc(S.settings.bannerImage)}"><label>標題大小</label><input id="setTitleSize" type="number" value="${S.settings.titleSize||32}"><label>內文字大小</label><input id="setBodySize" type="number" value="${S.settings.bodySize||16}"><button class="btn full" id="saveSettings" type="button">儲存首頁設定</button>`}
-async function saveSettings(){await setDoc(doc(db,'platform','settings'),{...S.settings,mainTitle:$('#setMain').value,subTitle:$('#setSub').value,slogan:$('#setSlogan').value,bannerImage:$('#setBanner').value,titleSize:Number($('#setTitleSize').value||32),bodySize:Number($('#setBodySize').value||16),updatedAt:serverTimestamp()},{merge:true});toast('已儲存')}
+async function saveSettings(){try{const patch={mainTitle:$('#setMain').value,subTitle:$('#setSub').value,slogan:$('#setSlogan').value,bannerImage:$('#setBanner').value,titleSize:Number($('#setTitleSize').value||32),bodySize:Number($('#setBodySize').value||16)};toast('正在儲存首頁設定…');await writeSettingsPatch(patch,'首頁設定已儲存')}catch(e){console.error(e);toast(`首頁設定儲存失敗：${e?.message||e}`)}}
 function crudAnnouncements(){return `<h2>📢 公告管理</h2><div class="split"><div><h3>公告列表</h3>${S.announcements.length?S.announcements.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.title)}</b><p>${a.visible===false?'隱藏':'顯示'}｜${fmtDate(a.createdAt)}</p></div><button class="btn small secondary" data-load-ann="${a.id}">編輯</button><button class="btn small danger" data-del-ann="${a.id}">刪除</button></div>`).join(''):'<div class="empty">尚無公告</div>'}</div><div><h3>${S.edit?.type==='ann'?'編輯':'新增'}公告</h3><label>標題</label><input id="annTitle" value="${esc(S.edit?.data?.title||'')}"><label>內容</label><textarea id="annContent">${esc(S.edit?.data?.content||'')}</textarea><label><input id="annVisible" type="checkbox" ${S.edit?.data?.visible===false?'':'checked'} style="width:auto;min-height:auto"> 顯示</label><button class="btn full" id="saveAnn" type="button">儲存公告</button><button class="btn secondary full" id="newAnn" type="button" style="margin-top:8px">清空新增</button></div></div>`}
-async function saveAnn(){const data={title:$('#annTitle').value,content:$('#annContent').value,visible:$('#annVisible').checked,updatedAt:serverTimestamp()}; if(S.edit?.type==='ann') await updateDoc(doc(db,'announcements',S.edit.id),data); else await addDoc(col('announcements'),{...data,createdAt:serverTimestamp()}); S.edit=null; toast('已儲存')}
+async function saveCollectionRecord(collectionName,id,data){
+  const ref=id?doc(db,collectionName,id):doc(col(collectionName));
+  await setDoc(ref,{...data,updatedAt:serverTimestamp(),...(id?{}:{createdAt:serverTimestamp()})},{merge:!!id});
+  const verify=await getDoc(ref);if(!verify.exists())throw new Error('儲存後找不到資料');return ref.id;
+}
+async function saveAnn(){try{const data={title:$('#annTitle').value.trim(),content:$('#annContent').value,visible:$('#annVisible').checked};if(!data.title)return toast('請輸入公告標題');toast('正在儲存公告…');await saveCollectionRecord('announcements',S.edit?.type==='ann'?S.edit.id:null,data);S.edit=null;render();toast('公告已儲存')}catch(e){console.error(e);toast(`公告儲存失敗：${e?.message||e}`)}}
 function crudTeams(){return `<h2>👥 隊伍管理</h2><div class="split"><div>${S.teams.map(t=>`<div class="listItem"><div class="grow"><b>${esc(t.name)}</b><p>${esc(t.note||'')}</p></div><button class="btn small secondary" data-load-team="${t.id}">編輯</button><button class="btn small danger" data-del-team="${t.id}">刪除</button></div>`).join('')||'<div class="empty">尚無隊伍</div>'}</div><div><label>隊伍名稱</label><input id="teamName" value="${esc(S.edit?.type==='team'?S.edit.data.name:'')}"><label>備註</label><input id="teamNote" value="${esc(S.edit?.type==='team'?S.edit.data.note||'':'')}"><button class="btn full" id="saveTeam" type="button">儲存隊伍</button><button class="btn secondary full" id="newTeam" type="button" style="margin-top:8px">清空新增</button></div></div>`}
-async function saveTeam(){const data={name:$('#teamName').value,note:$('#teamNote').value,updatedAt:serverTimestamp()}; if(!data.name)return toast('請輸入隊名'); if(S.edit?.type==='team') await updateDoc(doc(db,'teams',S.edit.id),data); else await addDoc(col('teams'),{...data,createdAt:serverTimestamp()}); S.edit=null; toast('已儲存')}
+async function saveTeam(){try{const data={name:$('#teamName').value.trim(),note:$('#teamNote').value};if(!data.name)return toast('請輸入隊名');toast('正在儲存隊伍…');await saveCollectionRecord('teams',S.edit?.type==='team'?S.edit.id:null,data);S.edit=null;render();toast('隊伍已儲存')}catch(e){console.error(e);toast(`隊伍儲存失敗：${e?.message||e}`)}}
 function crudMembers(){return `<h2>👤 人員管理</h2><div class="split"><div>${S.members.map(m=>`<div class="listItem"><div class="grow"><b>${esc(m.name)}</b><p>${esc(m.teamName||teamName(m.teamId)||'未分隊')}｜${esc(m.role||'')}</p></div><button class="btn small secondary" data-load-member="${m.id}">編輯</button><button class="btn small danger" data-del-member="${m.id}">刪除</button></div>`).join('')||'<div class="empty">尚無人員</div>'}</div><div><label>姓名</label><input id="memName" value="${esc(S.edit?.type==='member'?S.edit.data.name:'')}"><label>隊伍</label><select id="memTeam"><option value="">請選擇</option>${S.teams.map(t=>`<option value="${t.id}" ${S.edit?.type==='member'&&S.edit.data.teamId===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select><label>職級/備註</label><input id="memRole" value="${esc(S.edit?.type==='member'?S.edit.data.role||'':'')}"><label>電話</label><input id="memPhone" value="${esc(S.edit?.type==='member'?S.edit.data.phone||'':'')}"><button class="btn full" id="saveMember" type="button">儲存人員</button><button class="btn secondary full" id="newMember" type="button" style="margin-top:8px">清空新增</button></div></div>`}
-async function saveMember(){const tid=$('#memTeam').value;const data={name:$('#memName').value,teamId:tid,teamName:teamName(tid),role:$('#memRole').value,phone:$('#memPhone').value,updatedAt:serverTimestamp()}; if(!data.name)return toast('請輸入姓名'); if(S.edit?.type==='member') await updateDoc(doc(db,'members',S.edit.id),data); else await addDoc(col('members'),{...data,createdAt:serverTimestamp()}); S.edit=null; toast('已儲存')}
+async function saveMember(){try{const tid=$('#memTeam').value;const data={name:$('#memName').value.trim(),teamId:tid,teamName:teamName(tid),role:$('#memRole').value,phone:$('#memPhone').value};if(!data.name)return toast('請輸入姓名');toast('正在儲存人員…');await saveCollectionRecord('members',S.edit?.type==='member'?S.edit.id:null,data);S.edit=null;render();toast('人員已儲存')}catch(e){console.error(e);toast(`人員儲存失敗：${e?.message||e}`)}}
 function portalDraftImages(d){
   if(S.edit?.type==='portal' && Array.isArray(S.edit.data?.contentImages)) return S.edit.data.contentImages;
   return Array.isArray(S.portalDraftImages)?S.portalDraftImages:[];
@@ -290,9 +309,13 @@ async function savePortal(){
   const contentImages=portalDraftImages(d);
   const data={type:$('#portalType').value,title:$('#portalTitle').value,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:$('#portalImage').value,coverImage:$('#portalImage').value,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
   if(!data.title)return toast('請輸入標題');
-  if(S.edit?.type==='portal') await updateDoc(doc(db,'portals',S.edit.id),data);
-  else{const same=S.portals.find(p=>norm(p.title)===norm(data.title)); if(same) await updateDoc(doc(db,'portals',same.id),data); else await addDoc(col('portals'),{...data,createdAt:serverTimestamp()});}
-  S.edit=null;S.portalDraftImages=[];toast('已儲存 Portal 內容')
+  try{
+    toast('正在儲存 Portal…');
+    let targetId=S.edit?.type==='portal'?S.edit.id:null;
+    if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
+    await saveCollectionRecord('portals',targetId,data);
+    S.edit=null;S.portalDraftImages=[];render();toast('Portal 內容已儲存');
+  }catch(e){console.error(e);toast(`Portal 儲存失敗：${e?.message||e}`)}
 }
 async function applyBulkPortalImages(){
   const imgs=S.bulkPortalImages||[];
@@ -332,8 +355,7 @@ async function saveScoreRule(){
     S.ruleEdit=null;
     render();
     toast('正在儲存積分項目…');
-    await setDoc(doc(db,'platform','settings'),{scoreRules:S.settings.scoreRules,updatedAt:serverTimestamp()},{merge:true});
-    toast('積分項目已儲存');
+    await writeSettingsPatch({scoreRules:S.settings.scoreRules},'積分項目已儲存並完成驗證');
   }catch(e){
     console.error('saveScoreRule failed',e);
     toast(`儲存失敗：${e?.message||'請稍後再試'}`);
@@ -356,12 +378,7 @@ async function deleteScoreRule(index){
     S.ruleEdit=null;
     render();
     toast('正在移到最近刪除…');
-    await setDoc(doc(db,'platform','settings'),{
-      scoreRules:S.settings.scoreRules,
-      deletedScoreRules,
-      updatedAt:serverTimestamp()
-    },{merge:true});
-    toast(`已刪除「${itemName}」，可在最近刪除復原`);
+    await writeSettingsPatch({scoreRules:S.settings.scoreRules,deletedScoreRules},`已刪除「${itemName}」，可在最近刪除復原`);
   }catch(e){
     console.error('deleteScoreRule failed',e);
     toast(`刪除失敗：${e?.message||'請稍後再試'}`);
@@ -385,8 +402,7 @@ async function restoreScoreRule(filteredIndex){
     S.settings={...S.settings,scoreRules:{personal:all.personal.map(x=>[...x]),team:all.team.map(x=>[...x])},deletedScoreRules:allDeleted};
     render();
     toast('正在復原積分項目…');
-    await setDoc(doc(db,'platform','settings'),{scoreRules:S.settings.scoreRules,deletedScoreRules:allDeleted,updatedAt:serverTimestamp()},{merge:true});
-    toast(`已復原「${restored[1]}」`);
+    await writeSettingsPatch({scoreRules:S.settings.scoreRules,deletedScoreRules:allDeleted},`已復原「${restored[1]}」`);
   }catch(e){
     console.error('restoreScoreRule failed',e);
     toast(`復原失敗：${e?.message||'請稍後再試'}`);
@@ -401,8 +417,7 @@ async function saveWeekSettings(){
     S.scoreWeek=currentWeekNumber();
     render();
     toast('正在儲存週數設定…');
-    await setDoc(doc(db,'platform','settings'),{baseStart,weekCount,updatedAt:serverTimestamp()},{merge:true});
-    toast(`週數設定已儲存，目前自動為第 ${S.scoreWeek} 週`);
+    await writeSettingsPatch({baseStart,weekCount},`週數設定已儲存，目前自動為第 ${S.scoreWeek} 週`);
   }catch(e){
     console.error('saveWeekSettings failed',e);
     toast(`週數儲存失敗：${e?.message||'請稍後再試'}`);
@@ -410,7 +425,7 @@ async function saveWeekSettings(){
 }
 function dataImport(){return `<h2>📥 資料匯入</h2><div class="notice">此功能會讀取舊資料 <b>platform → settings → amrData → teams</b>，把原本隊伍與成員帶回新版。系統會自動略過同名隊伍與同隊同名人員，不會刪除舊資料。</div><br><button class="btn full" id="importLegacy" type="button">匯入原有人員與隊伍</button><br><br><div class="card blue"><b>目前新版資料</b><p>隊伍：${S.teams.length} 個｜人員：${S.members.length} 位</p>${S.importReport?`<p>${esc(S.importReport)}</p>`:''}</div>`}
 function themeCenter(){return `<h2>🎨 主題中心</h2><div class="grid grid2">${themes.map(([id,name])=>`<button class="btn ${S.settings.theme===id?'':'secondary'}" data-theme-set="${id}" type="button">${name}</button>`).join('')}</div><p class="fileNote">主題會同步到 Firebase，所有裝置重新開啟後會套用同一主題。</p>`}
-async function setTheme(id){await setDoc(doc(db,'platform','settings'),{theme:id,updatedAt:serverTimestamp()},{merge:true});toast('主題已套用')}
+async function setTheme(id){try{toast('正在套用主題…');await writeSettingsPatch({theme:id},'主題已套用')}catch(e){console.error(e);toast(`主題儲存失敗：${e?.message||e}`)}}
 
 async function compressImageFile(f,max=1600,targetBytes=850000){
   if(!f?.type?.startsWith('image/')) throw new Error('不是圖片');

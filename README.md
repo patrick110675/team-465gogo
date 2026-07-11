@@ -1,15 +1,16 @@
-# AMR Platform 1.0 — Portal 欄位與 PDF 上傳修正版
+# AMR Platform 1.0 儲存完整排查修正版
 
-## 本版修正
-- Portal 內頁會顯示：時間、地點、報名／外部連結、按鈕文字。
-- 報名網址即使沒有輸入 `https://`，系統也會自動補上。
-- PDF 改為直接選擇 `.pdf` 檔案上傳，不需要自行貼網址。
-- PDF 上傳至 Firebase Storage，下載網址會自動保存到 Firestore。
-- 內頁可同時顯示報名按鈕、PDF 按鈕與 YouTube 按鈕。
-- 舊欄位名稱相容：date/time/eventDate、place/location/eventPlace、url/link/registrationUrl。
+本版針對「修改後又恢復舊值」與各管理頁儲存一致性做完整修正。
+
+## 修正內容
+- 積分項目新增／修改／刪除／復原改用 Firestore transaction。
+- 每次儲存後重新讀取 Firebase 驗證，驗證失敗會直接顯示原因。
+- 儲存期間暫停即時監聽覆蓋本機新值，避免舊快照把畫面洗回去。
+- 首頁設定不再把整份舊設定回寫，只更新實際修改欄位。
+- 隊伍、人員、公告、Portal 儲存後皆重新讀取確認。
+- 週數設定與主題設定同樣使用驗證式儲存。
+- Portal 保留：六張內頁圖片、PDF 檔案上傳、時間／地點／連結等欄位。
+- 加入全域錯誤提示，若 Firebase 權限或網路錯誤會顯示原因。
 
 ## 更新方式
-將解壓縮後的 `index.html`、`README.md` 覆蓋 GitHub 專案根目錄，再 Commit changes。
-
-## 注意
-PDF 上傳需要 Firebase Storage 已啟用，且規則允許已登入的匿名使用者上傳檔案。
+將 `index.html` 覆蓋 GitHub 專案根目錄原檔後 Commit。
