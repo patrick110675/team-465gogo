@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="amr-build" content="2026-07-11-rebuild-upload-hsc"><title>AMR Platform 1.0｜圖片上傳重做・人超盃修正版</title>
+  <meta name="amr-build" content="2026-07-11-save-audit-v1"><title>AMR Platform 1.0｜積分規則自動週數修正版</title>
   <meta name="theme-color" content="#dff1ff" />
   <style>
     :root{--bg:#eaf6ff;--bg2:#d8efff;--card:#ffffff;--card2:#f4fbff;--text:#123049;--muted:#68849a;--primary:#2f80ed;--primary2:#76bfff;--accent:#f6c453;--danger:#ef4444;--ok:#16a34a;--line:#cfe8fb;--shadow:0 14px 35px rgba(31,99,151,.16);--radius:24px;--font:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;--titleSize:32px;--bodySize:16px}
@@ -32,7 +32,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
-const AMR_BUILD = '1.0-rebuild-20260711-upload-hsc';
+const AMR_BUILD = '1.0-complete-20260711-image-slots-hsc-fixed';
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
   authDomain: "team-465.firebaseapp.com",
@@ -252,8 +252,7 @@ function rankContent(){
   if(S.rankTab==='score') return `<div class="split">${rankBlock('👥 團隊排行',topList(sb.team,20))}${rankBlock('👤 個人排行',topList(sb.personal,20))}</div>`;
   if(S.rankTab==='hsc'){
     const arr=(S.humanSuperCup||[]).filter(x=>!x.deleted).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
-    const achieved=arr.filter(x=>x.achieved===true);
-    return `<h2>🏅 人超盃個人分數</h2>${arr.map((x,i)=>{const score=Number(x.score||0);return `<div class="rankItem"><div class="medal">${i<3?['🥇','🥈','🥉'][i]:i+1}</div><b>${esc(x.memberName||'未命名')}</b><span>${score} 分${x.achieved===true?'｜✅ 已達成':''}</span></div>`}).join('')||'<div class="empty">尚無人超盃分數</div>'}<h2>🎯 達成人員</h2>${achieved.map(x=>`<span class="pill" style="margin:4px">✅ ${esc(x.memberName)}</span>`).join('')||'<div class="empty">尚無達成人員</div>'}`;
+    return `<h2>🏅 人超盃個人分數</h2>${arr.map((x,i)=>`<div class="rankItem"><div class="medal">${i<3?['🥇','🥈','🥉'][i]:i+1}</div><b>${esc(x.memberName||'未命名')}</b><span>${Number(x.score||0)} 分${x.achieved?'｜✅ 已達成':''}</span></div>`).join('')||'<div class="empty">尚無人超盃分數</div>'}<h2>🎯 達成人員</h2>${arr.filter(x=>x.achieved===true).map(x=>`<span class="pill" style="margin:4px">✅ ${esc(x.memberName)}</span>`).join('')||'<div class="empty">尚無標記達成人員</div>'}`;
   }
   if(S.rankTab==='att'){
     return `<h2>📅 例會出席</h2>${S.attendance.length?S.attendance.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.memberName||a.name)}</b><p>${esc(a.status||'出席')}｜${fmtDate(a.createdAt)}</p></div></div>`).join(''):'<div class="empty">尚無例會紀錄</div>'}`;
@@ -271,7 +270,7 @@ function checkinPage(id){const e=S.events.find(x=>x.id===id); if(!e)return `<div
 async function submitCheckin(eid){const e=S.events.find(x=>x.id===eid); const kind=$('#ckKind').value; if(kind==='member'){const mid=$('#ckMember').value; const m=S.members.find(x=>x.id===mid); if(!m)return toast('請選姓名'); await addDoc(col(e.type==='meeting'?'attendance':'checkins'),{eventId:eid,eventType:e.type,memberId:m.id,memberName:m.name,teamId:m.teamId,teamName:m.teamName||teamName(m.teamId),status:'出席',isFriend:false,createdAt:serverTimestamp()}); if(e.type!=='meeting') await addDoc(col('score_history'),{mode:'personal',teamId:m.teamId,teamName:m.teamName||teamName(m.teamId),memberId:m.id,memberName:m.name,items:[{label:typeName(e.type)+'出席',count:1,points:2,score:2}],total:2,source:'QR自動加分',deleted:false,createdAt:serverTimestamp()}); } else {const name=$('#friendName').value.trim(); if(!name)return toast('請輸入新朋友姓名'); await addDoc(col('checkins'),{eventId:eid,eventType:e.type,name,phone:$('#friendPhone').value,referrer:$('#referrer').value,isFriend:true,createdAt:serverTimestamp()}); }
  toast('簽到完成');}
 
-function entryImg(x){return x?.coverImage||x?.image||x?.imageUrl||((Array.isArray(x?.contentImages)&&x.contentImages[0])||'')}
+function entryImg(x){const first=Array.isArray(x?.contentImages)?x.contentImages.find(Boolean):'';return x?.coverImage||x?.image||x?.imageUrl||first||''}
 function portalEntriesFor(portalId){return (S.portalEntries||[]).filter(x=>x.portalId===portalId&&x.visible!==false).sort((a,b)=>Number(a.order||99)-Number(b.order||99))}
 function hasLegacyPortalContent(p){return !!(p&&(p.content||p.description||p.date||p.place||p.url||p.pdfUrl||p.youtubeUrl||(Array.isArray(p.contentImages)&&p.contentImages.length)))}
 function portal(){
@@ -295,7 +294,7 @@ function entryTypeName(t){return {activity:'圖文活動',pdf:'PDF 文件',link:
 function portalContentDetail(item,portal,legacy=false){
   if(!item)return portalSection(portal);
   const cover=entryImg(item);
-  const inner=Array.isArray(item.contentImages)&&item.contentImages.length?item.contentImages:(cover?[cover]:[]);
+  const savedInner=Array.isArray(item.contentImages)?item.contentImages.filter(Boolean):[];const inner=savedInner.length?savedInner:(cover?[cover]:[]);
   const gallery=inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<img src="${src}" alt="${esc(item.title)} 圖片 ${i+1}">`).join('')}</div>`:'';
   const date=item.date||item.time||item.eventDate||'';
   const place=item.place||item.location||item.eventPlace||'';
@@ -311,40 +310,6 @@ function portalContentDetail(item,portal,legacy=false){
 }
 function admin(){const tabs=[['settings','🏠 首頁設定'],['ann','📢 公告'],['teams','👥 隊伍'],['members','👤 人員'],['portal','⭐ Portal'],['rules','🧮 積分項目'],['hsc','🏅 人超盃'],['theme','🎨 主題'],['data','📥 資料匯入']];return `${header()}<div class="adminLayout" style="margin-top:14px"><div class="card adminMenu"><h2>⚙️ 管理中心</h2>${tabs.map(([id,tx])=>`<button class="btn ${S.adminTab===id?'':'secondary'} full" style="margin:6px 0" data-admintab="${id}" type="button">${tx}</button>`).join('')}<div class="notice" style="margin-top:10px">☁️ Firebase 狀態：已連線</div></div><div class="card">${adminContent()}</div></div>`}
 function adminContent(){if(S.adminTab==='settings')return settingsForm(); if(S.adminTab==='ann')return crudAnnouncements(); if(S.adminTab==='teams')return crudTeams(); if(S.adminTab==='members')return crudMembers(); if(S.adminTab==='portal')return crudPortal(); if(S.adminTab==='rules')return scoreRuleManager(); if(S.adminTab==='hsc')return humanSuperCupManager(); if(S.adminTab==='theme')return themeCenter(); if(S.adminTab==='data')return dataImport();}
-
-function humanSuperCupManager(){
-  const active=(S.humanSuperCup||[]).filter(x=>!x.deleted).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
-  const deleted=(S.humanSuperCup||[]).filter(x=>x.deleted).sort((a,b)=>(b.deletedAt?.seconds||0)-(a.deletedAt?.seconds||0));
-  const d=S.hscEdit?.data||{};
-  return `<h2>🏅 人超盃個人分數</h2>
-  <div class="notice">人超盃是獨立的個人分數，不選隊伍，也不會加到一般個人或團隊積分。</div>
-  <div class="split" style="margin-top:14px"><div><h3>目前分數</h3>${active.length?active.map((x,i)=>`<div class="listItem"><div class="grow"><b>${i+1}. ${esc(x.memberName||'未命名')}</b><p>${Number(x.score||0)} 分${x.achieved===true?'｜✅ 已達成':''}${x.note?'｜'+esc(x.note):''}</p></div><button class="btn small secondary" data-load-hsc="${x.id}" type="button">編輯</button><button class="btn small danger" data-del-hsc="${x.id}" type="button">刪除</button></div>`).join(''):'<div class="empty">尚無人超盃資料</div>'}
-  <h3 style="margin-top:18px">🗑️ 最近刪除</h3>${deleted.length?deleted.map(x=>`<div class="listItem"><div class="grow"><b>${esc(x.memberName||'未命名')}</b><p>${Number(x.score||0)} 分</p></div><button class="btn small ok" data-restore-hsc="${x.id}" type="button">復原</button></div>`).join(''):'<div class="empty">沒有可復原資料</div>'}</div>
-  <div><h3>${S.hscEdit?'編輯分數':'新增分數'}</h3><label>人員姓名</label><select id="hscMember"><option value="">請選擇人員</option>${S.members.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'zh-Hant')).map(m=>`<option value="${m.id}" ${d.memberId===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select><label>人超盃分數</label><input id="hscScore" type="number" step="1" value="${Number(d.score||0)}"><label style="display:flex;align-items:center;gap:8px"><input id="hscAchieved" type="checkbox" ${d.achieved===true?'checked':''} style="width:auto;min-height:auto"> 已達成</label><label>備註</label><textarea id="hscNote" placeholder="可留空">${esc(d.note||'')}</textarea><button class="btn full" id="saveHsc" type="button">儲存人超盃分數</button><button class="btn secondary full" id="newHsc" type="button" style="margin-top:8px">清空新增</button></div></div>`;
-}
-async function saveHsc(){
-  try{
-    const memberId=$('#hscMember')?.value||'';
-    const member=S.members.find(x=>x.id===memberId);
-    if(!member)return toast('請選擇人員');
-    const score=Number($('#hscScore')?.value||0);
-    if(!Number.isFinite(score))return toast('請輸入正確分數');
-    const data={memberId,memberName:member.name,score,achieved:$('#hscAchieved')?.checked===true,note:$('#hscNote')?.value||'',deleted:false,updatedBy:currentUser?.uid||'anonymous'};
-    let targetId=S.hscEdit?.id||null;
-    if(!targetId){const same=(S.humanSuperCup||[]).find(x=>!x.deleted&&x.memberId===memberId);if(same)targetId=same.id;}
-    toast('正在儲存人超盃分數…');
-    await saveCollectionRecord('human_super_cup',targetId,data);
-    S.hscEdit=null;render();toast('人超盃分數已儲存');
-  }catch(e){console.error('saveHsc failed',e);toast(`人超盃儲存失敗：${e?.message||e}`)}
-}
-async function deleteHsc(id){
-  if(!confirm('確定刪除此筆人超盃分數？之後仍可復原。'))return;
-  try{await updateDoc(doc(db,'human_super_cup',id),{deleted:true,deletedAt:serverTimestamp(),updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||'anonymous'});S.hscEdit=null;toast('已移到最近刪除')}catch(e){toast(`刪除失敗：${e?.message||e}`)}
-}
-async function restoreHsc(id){
-  try{await updateDoc(doc(db,'human_super_cup',id),{deleted:false,deletedAt:null,updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||'anonymous'});toast('已復原人超盃分數')}catch(e){toast(`復原失敗：${e?.message||e}`)}
-}
-
 function settingsForm(){return `<h2>🏠 首頁設定</h2><label>主標題</label><input id="setMain" value="${esc(S.settings.mainTitle)}"><label>副標題</label><input id="setSub" value="${esc(S.settings.subTitle)}"><label>標語</label><input id="setSlogan" value="${esc(S.settings.slogan)}"><label>Banner 圖片網址</label><input id="setBanner" value="${esc(S.settings.bannerImage)}"><label>標題大小</label><input id="setTitleSize" type="number" value="${S.settings.titleSize||32}"><label>內文字大小</label><input id="setBodySize" type="number" value="${S.settings.bodySize||16}"><button class="btn full" id="saveSettings" type="button">儲存首頁設定</button>`}
 async function saveSettings(){try{const patch={mainTitle:$('#setMain').value,subTitle:$('#setSub').value,slogan:$('#setSlogan').value,bannerImage:$('#setBanner').value,titleSize:Number($('#setTitleSize').value||32),bodySize:Number($('#setBodySize').value||16)};toast('正在儲存首頁設定…');await writeSettingsPatch(patch,'首頁設定已儲存')}catch(e){console.error(e);toast(`首頁設定儲存失敗：${e?.message||e}`)}}
 function crudAnnouncements(){return `<h2>📢 公告管理</h2><div class="split"><div><h3>公告列表</h3>${S.announcements.length?S.announcements.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.title)}</b><p>${a.visible===false?'隱藏':'顯示'}｜${fmtDate(a.createdAt)}</p></div><button class="btn small secondary" data-load-ann="${a.id}">編輯</button><button class="btn small danger" data-del-ann="${a.id}">刪除</button></div>`).join(''):'<div class="empty">尚無公告</div>'}</div><div><h3>${S.edit?.type==='ann'?'編輯':'新增'}公告</h3><label>標題</label><input id="annTitle" value="${esc(S.edit?.data?.title||'')}"><label>內容</label><textarea id="annContent">${esc(S.edit?.data?.content||'')}</textarea><label><input id="annVisible" type="checkbox" ${S.edit?.data?.visible===false?'':'checked'} style="width:auto;min-height:auto"> 顯示</label><button class="btn full" id="saveAnn" type="button">儲存公告</button><button class="btn secondary full" id="newAnn" type="button" style="margin-top:8px">清空新增</button></div></div>`}
@@ -377,7 +342,7 @@ function crudPortal(){
   <label>類型</label><select id="portalType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select>
   <label>標題</label><input id="portalTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="portalSub" value="${esc(d.subtitle||'')}"><label>Icon</label><input id="portalIcon" value="${esc(d.icon||'⭐')}">
   <label>六宮格封面圖片</label><input id="portalImage" value="${esc(portalImg(d))}"><div class="fileNote">這張圖會顯示在 Portal 方框。可貼圖片網址，或由下方選擇檔案。</div>${portalImg(d)?`<img src="${portalImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="portalImageFile" accept="image/*">
-  <label>內頁圖片（一次上傳 1 張，最多 6 張）</label><div class="fileNote">每次選擇一張圖片，上傳成功後會依序加入。最多 6 張，最後再按「儲存 Portal」。</div>${inner.length?`<div class="portalGallery">${inner.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-inner="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="portalInnerFiles" accept="image/*">
+  <label>Portal 內頁圖片（第 1～6 張，逐張上傳）</label><div class="notice">每個位置一次選一張。既有 Portal 會在上傳成功後立即寫入 Firebase。</div><div class="bulkPreview">${Array.from({length:6},(_,i)=>{const src=inner[i]||'';return `<figure>${src?`<img src="${src}">`:`<div style="aspect-ratio:16/9;border:1px dashed var(--line);border-radius:14px;display:grid;place-items:center;color:var(--muted)">圖片 ${i+1}</div>`}<figcaption>第 ${i+1} 張</figcaption><input type="file" data-portal-image-slot="${i}" accept="image/*">${src?`<button type="button" class="btn small danger full" data-remove-portal-slot="${i}">移除</button>`:''}</figure>`}).join('')}</div>
   <label>貼文內容</label><textarea id="portalContent" placeholder="可貼完整活動說明、段落與換行">${esc(d.content||'')}</textarea>
   <div class="formRow"><div><label>時間</label><input id="portalDate" value="${esc(d.date||d.time||d.eventDate||'')}" placeholder="例如：7/17（五）18:30～20:30"></div><div><label>地點</label><input id="portalPlace" value="${esc(d.place||d.location||d.eventPlace||'')}" placeholder="例如：南山干城大樓 9 樓"></div></div>
   <label>報名／外部連結</label><input id="portalUrl" value="${esc(d.url||'')}" placeholder="https://..."><label>按鈕文字</label><input id="portalButtonText" value="${esc(d.buttonText||'')}" placeholder="例如：立即報名">
@@ -394,12 +359,9 @@ async function savePortal(){
     toast('正在整理圖片並儲存 Portal…');
     // 舊版本可能把 base64 圖片直接塞進 Firestore；這裡會自動搬到 Storage，避免超過 1MB 文件上限。
     const coverImage=await ensureStorageImage($('#portalImage').value,'portal-images/covers');
-    const rawImages=portalDraftImages(d).flat(Infinity).filter(v=>typeof v==='string'&&v).slice(0,6);
+    const rawImages=portalDraftImages(d).flat(Infinity).slice(0,6);
     const contentImages=[];
-    for(let i=0;i<rawImages.length;i++){
-      toast(`正在整理內頁圖片 ${i+1}/${rawImages.length}…`);
-      contentImages.push(await ensureStorageImage(rawImages[i],'portal-images/content'));
-    }
+    for(let i=0;i<6;i++){if(rawImages[i]){toast(`正在整理內頁圖片 ${i+1}/6…`);contentImages.push(await ensureStorageImage(rawImages[i],'portal-images/content'));}else contentImages.push('');}
     const data={type:$('#portalType').value,title,subtitle:$('#portalSub').value,icon:$('#portalIcon').value,image:coverImage,coverImage,contentImages,content:$('#portalContent').value,date:$('#portalDate').value,time:$('#portalDate').value,eventDate:$('#portalDate').value,place:$('#portalPlace').value,location:$('#portalPlace').value,eventPlace:$('#portalPlace').value,url:safeUrl($('#portalUrl').value),link:safeUrl($('#portalUrl').value),registrationUrl:safeUrl($('#portalUrl').value),buttonText:$('#portalButtonText').value,pdfUrl:$('#portalPdf').value,pdfName:$('#portalPdfName')?.value||d.pdfName||'',youtubeUrl:safeUrl($('#portalYoutube').value),order:Number($('#portalOrder').value||99),visible:$('#portalVisible').value==='true',updatedAt:serverTimestamp()};
     let targetId=S.edit?.type==='portal'?S.edit.id:null;
     if(!targetId){const same=S.portals.find(p=>norm(p.title)===norm(data.title));if(same)targetId=same.id;}
@@ -424,7 +386,7 @@ function portalEntryManager(portalId){
   const entries=(S.portalEntries||[]).filter(x=>x.portalId===portalId).sort((a,b)=>Number(a.order||99)-Number(b.order||99));
   const d=S.entryEdit?.data||(S.entryDraftForm||{});
   const imgs=entryDraftImages(d);
-  return `<div class="entryAdmin"><h2>📚 ${esc(portal?.title||'Portal')}｜專區內容</h2><div class="notice">此專區可以新增多篇活動、公文、圖片貼文、外部連結或 YouTube。每篇內容彼此獨立，可單獨修改、隱藏或刪除。</div><div class="split" style="margin-top:14px"><div>${entries.map(e=>`<div class="listItem"><div class="grow"><b>${esc(e.title)}</b><p>${entryTypeName(e.type)}｜${e.visible===false?'隱藏':'顯示'}｜排序 ${e.order||''}</p></div><button class="btn small secondary" data-load-entry="${e.id}">編輯</button><button class="btn small danger" data-del-entry="${e.id}">刪除</button></div>`).join('')||'<div class="empty">尚無內容，請在右側新增第一篇。</div>'}</div><div><h3>${S.entryEdit?'編輯內容':'新增內容'}</h3><label>內容類型</label><select id="entryType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="article" ${d.type==='article'?'selected':''}>圖文內容</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select><label>標題</label><input id="entryTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="entrySub" value="${esc(d.subtitle||'')}"><label>封面圖片</label><input id="entryCover" value="${esc(entryImg(d))}">${entryImg(d)?`<img src="${entryImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="entryCoverFile" accept="image/*"><label>內頁圖片（一次上傳 1 張，最多 6 張）</label>${imgs.length?`<div class="portalGallery">${imgs.map((src,i)=>`<div style="position:relative"><img src="${src}"><button type="button" class="btn small danger" data-remove-entry-image="${i}" style="position:absolute;right:8px;top:8px">刪除</button></div>`).join('')}</div>`:''}<input type="file" id="entryInnerFiles" accept="image/*"><label>貼文內容</label><textarea id="entryContent">${esc(d.content||'')}</textarea><div class="formRow"><div><label>時間</label><input id="entryDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="entryPlace" value="${esc(d.place||'')}"></div></div><label>報名／外部連結</label><input id="entryUrl" value="${esc(d.url||'')}"><label>按鈕文字</label><input id="entryButton" value="${esc(d.buttonText||'')}"><label>PDF 檔案</label><input type="file" id="entryPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank">開啟確認</a></div>`:''}<input id="entryPdfUrl" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="entryPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="entryYoutube" value="${esc(d.youtubeUrl||'')}"><div class="formRow"><div><label>排序</label><input id="entryOrder" type="number" value="${Number(d.order||entries.length+1)}"></div><div><label>顯示</label><select id="entryVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div><button class="btn full" id="saveEntry" type="button">儲存專區內容</button><button class="btn secondary full" id="newEntry" type="button" style="margin-top:8px">清空新增下一篇</button></div></div></div>`
+  return `<div class="entryAdmin"><h2>📚 ${esc(portal?.title||'Portal')}｜專區內容</h2><div class="notice">此專區可以新增多篇活動、公文、圖片貼文、外部連結或 YouTube。每篇內容彼此獨立，可單獨修改、隱藏或刪除。</div><div class="split" style="margin-top:14px"><div>${entries.map(e=>`<div class="listItem"><div class="grow"><b>${esc(e.title)}</b><p>${entryTypeName(e.type)}｜${e.visible===false?'隱藏':'顯示'}｜排序 ${e.order||''}</p></div><button class="btn small secondary" data-load-entry="${e.id}">編輯</button><button class="btn small danger" data-del-entry="${e.id}">刪除</button></div>`).join('')||'<div class="empty">尚無內容，請在右側新增第一篇。</div>'}</div><div><h3>${S.entryEdit?'編輯內容':'新增內容'}</h3><label>內容類型</label><select id="entryType"><option value="activity" ${d.type==='activity'?'selected':''}>圖文活動</option><option value="article" ${d.type==='article'?'selected':''}>圖文內容</option><option value="pdf" ${d.type==='pdf'?'selected':''}>PDF 文件</option><option value="link" ${d.type==='link'?'selected':''}>外部連結</option><option value="youtube" ${d.type==='youtube'?'selected':''}>YouTube</option></select><label>標題</label><input id="entryTitle" value="${esc(d.title||'')}"><label>副標題</label><input id="entrySub" value="${esc(d.subtitle||'')}"><label>封面圖片</label><input id="entryCover" value="${esc(entryImg(d))}">${entryImg(d)?`<img src="${entryImg(d)}" style="width:100%;border-radius:16px;margin:8px 0;max-height:220px;object-fit:contain;background:white">`:''}<input type="file" id="entryCoverFile" accept="image/*"><label>內頁圖片（第 1～6 張，逐張上傳）</label><div class="notice">先輸入標題，再從圖片 1 開始一張一張選。每張上傳成功後會立即自動儲存。</div><div class="bulkPreview">${Array.from({length:6},(_,i)=>{const src=imgs[i]||'';return `<figure>${src?`<img src="${src}">`:`<div style="aspect-ratio:16/9;border:1px dashed var(--line);border-radius:14px;display:grid;place-items:center;color:var(--muted)">圖片 ${i+1}</div>`}<figcaption>第 ${i+1} 張</figcaption><input type="file" data-entry-image-slot="${i}" accept="image/*">${src?`<button type="button" class="btn small danger full" data-remove-entry-slot="${i}">移除</button>`:''}</figure>`}).join('')}</div><label>貼文內容</label><textarea id="entryContent">${esc(d.content||'')}</textarea><div class="formRow"><div><label>時間</label><input id="entryDate" value="${esc(d.date||'')}"></div><div><label>地點</label><input id="entryPlace" value="${esc(d.place||'')}"></div></div><label>報名／外部連結</label><input id="entryUrl" value="${esc(d.url||'')}"><label>按鈕文字</label><input id="entryButton" value="${esc(d.buttonText||'')}"><label>PDF 檔案</label><input type="file" id="entryPdfFile" accept="application/pdf">${d.pdfUrl?`<div class="notice" style="margin-top:8px">目前 PDF：${esc(d.pdfName||'已上傳檔案')}<br><a href="${esc(d.pdfUrl)}" target="_blank">開啟確認</a></div>`:''}<input id="entryPdfUrl" type="hidden" value="${esc(d.pdfUrl||'')}"><input id="entryPdfName" type="hidden" value="${esc(d.pdfName||'')}"><label>YouTube 網址</label><input id="entryYoutube" value="${esc(d.youtubeUrl||'')}"><div class="formRow"><div><label>排序</label><input id="entryOrder" type="number" value="${Number(d.order||entries.length+1)}"></div><div><label>顯示</label><select id="entryVisible"><option value="true" ${d.visible===false?'':'selected'}>顯示</option><option value="false" ${d.visible===false?'selected':''}>隱藏</option></select></div></div><button class="btn full" id="saveEntry" type="button">儲存專區內容</button><button class="btn secondary full" id="newEntry" type="button" style="margin-top:8px">清空新增下一篇</button></div></div></div>`
 }
 
 function snapshotEntryForm(){
@@ -434,49 +396,30 @@ function snapshotEntryForm(){
 async function savePortalEntry(){
   if(!S.edit?.id)return toast('請先選擇 Portal');
   const title=$('#entryTitle').value.trim();if(!title)return toast('請輸入內容標題');
-  try{toast('正在儲存專區內容…');const coverImage=await ensureStorageImage($('#entryCover').value,'portal-entry-images/covers');const raw=entryDraftImages(S.entryEdit?.data||{}).flat(Infinity).filter(v=>typeof v==='string'&&v).slice(0,6);const contentImages=[];for(let i=0;i<raw.length;i++)contentImages.push(await ensureStorageImage(raw[i],'portal-entry-images/content'));const data={portalId:S.edit.id,portalTitle:S.edit.data.title,type:$('#entryType').value,title,subtitle:$('#entrySub').value,coverImage,image:coverImage,contentImages,content:$('#entryContent').value,date:$('#entryDate').value,place:$('#entryPlace').value,url:safeUrl($('#entryUrl').value),buttonText:$('#entryButton').value,pdfUrl:$('#entryPdfUrl').value,pdfName:$('#entryPdfName').value,youtubeUrl:safeUrl($('#entryYoutube').value),order:Number($('#entryOrder').value||99),visible:$('#entryVisible').value==='true',updatedAt:serverTimestamp()};await saveCollectionRecord('portal_entries',S.entryEdit?.id||null,data);S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;render();toast('專區內容已儲存')}catch(e){console.error(e);toast(`內容儲存失敗：${e?.message||e}`)}}
+  try{toast('正在儲存專區內容…');const coverImage=await ensureStorageImage($('#entryCover').value,'portal-entry-images/covers');const raw=entryDraftImages(S.entryEdit?.data||{}).flat(Infinity).slice(0,6);const contentImages=[];for(let i=0;i<6;i++)contentImages.push(raw[i]?await ensureStorageImage(raw[i],'portal-entry-images/content'):'');const data={portalId:S.edit.id,portalTitle:S.edit.data.title,type:$('#entryType').value,title,subtitle:$('#entrySub').value,coverImage,image:coverImage,contentImages,content:$('#entryContent').value,date:$('#entryDate').value,place:$('#entryPlace').value,url:safeUrl($('#entryUrl').value),buttonText:$('#entryButton').value,pdfUrl:$('#entryPdfUrl').value,pdfName:$('#entryPdfName').value,youtubeUrl:safeUrl($('#entryYoutube').value),order:Number($('#entryOrder').value||99),visible:$('#entryVisible').value==='true',updatedAt:serverTimestamp()};await saveCollectionRecord('portal_entries',S.entryEdit?.id||null,data);S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;render();toast('專區內容已儲存')}catch(e){console.error(e);toast(`內容儲存失敗：${e?.message||e}`)}}
 async function handleEntryCover(input){
   const f=input.files?.[0];if(!f)return;
-  const form=snapshotEntryForm();input.disabled=true;
-  try{
-    toast('封面圖片上傳中…');
-    const url=await uploadCompressedImageFile(f,'portal-entry-images/covers',1600,700000);
-    if(S.entryEdit?.id){
-      S.entryEdit.data={...S.entryEdit.data,...form,coverImage:url,image:url};
-      await updateDoc(doc(db,'portal_entries',S.entryEdit.id),{coverImage:url,image:url,updatedAt:serverTimestamp()});
-      toast('封面已上傳並儲存');
-    }else{
-      S.entryDraftForm={...(S.entryDraftForm||{}),...form,coverImage:url,image:url};
-      toast('封面已上傳；請完成標題後按「儲存專區內容」');
-    }
-    render();
-  }catch(e){console.error('handleEntryCover failed',e);toast(`封面上傳失敗：${e?.code||''} ${e?.message||e}`)}finally{input.disabled=false;input.value=''}
+  const form=snapshotEntryForm();
+  try{toast('封面圖片上傳中…');const url=await uploadCompressedImageFile(f,'portal-entry-images/covers',1600,700000);if(S.entryEdit)S.entryEdit.data={...S.entryEdit.data,...form,coverImage:url,image:url};else S.entryDraftForm={...(S.entryDraftForm||{}),...form,coverImage:url,image:url};render();toast('封面已上傳，請按儲存專區內容')}catch(e){toast(`封面上傳失敗：${e?.message||e}`)}finally{input.value=''}
 }
-async function handleEntryInner(input){
-  const file=input.files?.[0];if(!file)return;
-  const current=[...entryDraftImages(S.entryEdit?.data||{})].filter(Boolean);
-  if(current.length>=6){toast('每篇內容最多 6 張圖片');input.value='';return;}
-  const form=snapshotEntryForm();input.disabled=true;
-  try{
-    toast(`正在上傳第 ${current.length+1} 張內頁圖片…`);
-    const url=await uploadCompressedImageFile(file,'portal-entry-images/content',1600,700000);
-    const merged=[...current,url].slice(0,6);
-    if(S.entryEdit?.id){
-      S.entryEdit.data={...S.entryEdit.data,...form,contentImages:merged};
-      await updateDoc(doc(db,'portal_entries',S.entryEdit.id),{contentImages:merged,updatedAt:serverTimestamp()});
-      toast(`第 ${merged.length} 張圖片已上傳並儲存`);
-    }else{
-      S.entryDraftForm={...(S.entryDraftForm||{}),...form};S.entryDraftImages=merged;
-      toast(`第 ${merged.length} 張圖片已上傳；完成標題後請按「儲存專區內容」`);
-    }
-    render();
-  }catch(e){console.error('handleEntryInner failed',e);toast(`圖片上傳失敗：${e?.code||''} ${e?.message||e}`)}finally{input.disabled=false;input.value=''}
-}
+async function handleEntryImageSlot(input,slot){const file=input.files?.[0];if(!file)return;const form=snapshotEntryForm();if(!String(form.title||'').trim()){toast('請先輸入內容標題，再上傳圖片');input.value='';return;}input.disabled=true;try{toast(`正在上傳第 ${slot+1} 張圖片…`);const url=await uploadImageFileDirect(file,'portal-entry-images/content',1600,700000);const imgs=[...entryDraftImages(S.entryEdit?.data||{})];while(imgs.length<6)imgs.push('');imgs[slot]=url;const data={portalId:S.edit.id,portalTitle:S.edit.data.title,...form,coverImage:form.coverImage||url,image:form.coverImage||url,contentImages:imgs,updatedAt:serverTimestamp()};const id=await saveCollectionRecord('portal_entries',S.entryEdit?.id||null,data);S.entryEdit={id,data:{...data,id}};S.entryDraftImages=[];S.entryDraftForm=null;render();toast(`第 ${slot+1} 張圖片已上傳並自動儲存`)}catch(e){console.error(e);toast(`圖片上傳失敗：${e?.code||''} ${e?.message||e}`)}finally{input.disabled=false;input.value=''}}
+async function removeEntryImageSlot(slot){const form=snapshotEntryForm();const imgs=[...entryDraftImages(S.entryEdit?.data||{})];while(imgs.length<6)imgs.push('');imgs[slot]='';if(S.entryEdit?.id){await updateDoc(doc(db,'portal_entries',S.entryEdit.id),{contentImages:imgs,updatedAt:serverTimestamp()});S.entryEdit.data={...S.entryEdit.data,...form,contentImages:imgs}}else{S.entryDraftImages=imgs;S.entryDraftForm={...(S.entryDraftForm||{}),...form}}render();toast(`已移除第 ${slot+1} 張圖片`) }
 async function handleEntryPdf(input){
   const file=input.files?.[0];if(!file)return;
   const form=snapshotEntryForm();
   try{toast('PDF 上傳中…');const safeName=file.name.replace(/[^a-zA-Z0-9._\-\u4e00-\u9fff]/g,'_');const path=`portal-entry-pdfs/${Date.now()}-${safeName}`;const snap=await uploadBytes(storageRef(storage,path),file,{contentType:'application/pdf'});const url=await getDownloadURL(snap.ref);if(S.entryEdit)S.entryEdit.data={...S.entryEdit.data,...form,pdfUrl:url,pdfName:file.name};else S.entryDraftForm={...(S.entryDraftForm||{}),...form,pdfUrl:url,pdfName:file.name};render();toast('PDF 已上傳，請按儲存專區內容')}catch(e){toast(`PDF 上傳失敗：${e?.message||e}`)}finally{input.value=''}
 }
+
+function humanSuperCupManager(){
+  const rows=(S.humanSuperCup||[]).filter(x=>!x.deleted).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
+  const deleted=(S.humanSuperCup||[]).filter(x=>x.deleted);
+  const d=S.hscEdit?.data||{};
+  return `<h2>🏅 人超盃管理</h2><div class="notice">人超盃是個人獨立分數，不選隊伍，也不會併入一般個人或團隊積分。</div><div class="split" style="margin-top:14px"><div><h3>人員分數</h3>${rows.map(x=>`<div class="listItem"><div class="grow"><b>${esc(x.memberName||'未命名')}</b><p>${Number(x.score||0)} 分${x.achieved?'｜✅ 已達成':''}${x.note?'｜'+esc(x.note):''}</p></div><button class="btn small secondary" data-load-hsc="${x.id}">編輯</button><button class="btn small danger" data-del-hsc="${x.id}">刪除</button></div>`).join('')||'<div class="empty">尚無人超盃分數</div>'}${deleted.length?`<h3 style="margin-top:18px">🗑️ 最近刪除</h3>${deleted.map(x=>`<div class="listItem"><div class="grow"><b>${esc(x.memberName||'未命名')}</b><p>${Number(x.score||0)} 分</p></div><button class="btn small ok" data-restore-hsc="${x.id}">復原</button></div>`).join('')}`:''}</div><div><h3>${S.hscEdit?'編輯':'新增'}人員分數</h3><label>人員姓名</label><select id="hscMember"><option value="">請選擇人員</option>${S.members.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'zh-Hant')).map(m=>`<option value="${m.id}" ${d.memberId===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select><label>人超盃分數</label><input id="hscScore" type="number" step="1" value="${Number(d.score||0)}"><label style="display:flex;align-items:center;gap:8px"><input id="hscAchieved" type="checkbox" ${d.achieved?'checked':''} style="width:auto;min-height:auto"> 已達成</label><label>備註</label><input id="hscNote" value="${esc(d.note||'')}"><button class="btn full" id="saveHsc" type="button">儲存人超盃分數</button><button class="btn secondary full" id="newHsc" type="button" style="margin-top:8px">清空新增</button></div></div>`;
+}
+async function saveHsc(){try{const memberId=$('#hscMember')?.value||'';const member=S.members.find(x=>x.id===memberId);if(!member)return toast('請選擇人員');const data={memberId,memberName:member.name,score:Number($('#hscScore')?.value||0),achieved:!!$('#hscAchieved')?.checked,note:$('#hscNote')?.value||'',deleted:false};let id=S.hscEdit?.id||null;if(!id){const same=(S.humanSuperCup||[]).find(x=>!x.deleted&&x.memberId===memberId);if(same)id=same.id;}toast('正在儲存人超盃分數…');await saveCollectionRecord('human_super_cup',id,data);S.hscEdit=null;render();toast('人超盃分數已儲存')}catch(e){console.error(e);toast(`人超盃儲存失敗：${e?.message||e}`)}}
+async function deleteHsc(id){if(!confirm('確認刪除這筆人超盃分數？之後仍可復原。'))return;try{await updateDoc(doc(db,'human_super_cup',id),{deleted:true,updatedAt:serverTimestamp()});S.hscEdit=null;toast('已移到最近刪除')}catch(e){toast(`刪除失敗：${e?.message||e}`)}}
+async function restoreHsc(id){try{await updateDoc(doc(db,'human_super_cup',id),{deleted:false,updatedAt:serverTimestamp()});toast('已復原人超盃分數')}catch(e){toast(`復原失敗：${e?.message||e}`)}}
+
 function scoreRuleManager(){
   const mode=S.ruleMode||'personal';
   const rules=activeScoreRules()[mode];
@@ -580,14 +523,9 @@ function themeCenter(){return `<h2>🎨 主題中心</h2><div class="grid grid2"
 async function setTheme(id){try{toast('正在套用主題…');await writeSettingsPatch({theme:id},'主題已套用')}catch(e){console.error(e);toast(`主題儲存失敗：${e?.message||e}`)}}
 
 
-async function waitForFirebaseUser(timeoutMs=10000){
-  if(currentUser)return currentUser;
-  await signInAnonymously(auth).catch(()=>{});
-  return await new Promise((resolve,reject)=>{
-    const timer=setTimeout(()=>{unsub();reject(new Error('Firebase 登入逾時，請重新整理後再試'))},timeoutMs);
-    const unsub=onAuthStateChanged(auth,u=>{if(u){clearTimeout(timer);currentUser=u;unsub();resolve(u)}});
-  });
-}
+async function waitForFirebaseUser(timeoutMs=10000){if(currentUser)return currentUser;return await new Promise((resolve,reject)=>{let done=false;const timer=setTimeout(()=>{if(!done){done=true;reject(new Error('Firebase 登入逾時，請重新整理後再試'))}},timeoutMs);const off=onAuthStateChanged(auth,u=>{if(u&&!done){done=true;clearTimeout(timer);off();currentUser=u;resolve(u)}});signInAnonymously(auth).catch(e=>{if(!done){done=true;clearTimeout(timer);off();reject(e)}})})}
+function dataUrlToBlob(dataUrl){const [head,body]=dataUrl.split(',');const mime=(head.match(/data:(.*?);/)||[])[1]||'image/jpeg';const bin=atob(body);const arr=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);return new Blob([arr],{type:mime})}
+async function uploadImageFileDirect(file,folder,max=1600,targetBytes=700000){await waitForFirebaseUser();const data=await compressImageFile(file,max,targetBytes);const blob=dataUrlToBlob(data);const token=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2));const path=`${folder}/${Date.now()}-${token}.jpg`;const snap=await uploadBytes(storageRef(storage,path),blob,{contentType:'image/jpeg'});return await getDownloadURL(snap.ref)}
 
 async function compressImageFile(f,max=1600,targetBytes=850000){
   if(!f?.type?.startsWith('image/')) throw new Error('不是圖片');
@@ -608,25 +546,17 @@ async function ensureStorageImage(value,folder='portal-images'){
   return await getDownloadURL(snap.ref);
 }
 async function uploadCompressedImageFile(file,folder='portal-images',max=1600,targetBytes=850000){
-  await waitForFirebaseUser();
   const data=await compressImageFile(file,max,targetBytes);
   return await ensureStorageImage(data,folder);
 }
 async function fileToData(input,target){
-  const f=input.files?.[0];if(!f)return;input.disabled=true;toast('封面圖片上傳中…');
+  const f=input.files?.[0];if(!f)return;toast('封面圖片上傳中…');
   try{
     const url=await uploadCompressedImageFile(f,'portal-images/covers',1600,700000);
-    const field=$(target);if(field)field.value=url;
-    if(S.edit?.type==='portal'){
-      S.edit.data.image=url;S.edit.data.coverImage=url;
-      await updateDoc(doc(db,'portals',S.edit.id),{image:url,coverImage:url,updatedAt:serverTimestamp()});
-      toast('Portal 封面已上傳並儲存');
-    }else{
-      S.portalDraftForm={...(S.portalDraftForm||{}),...snapshotPortalForm(),image:url,coverImage:url};
-      toast('封面已上傳；請先儲存 Portal 基本資料');
-    }
-    render();
-  }catch(e){console.error(e);toast(`圖片上傳失敗：${e?.code||''} ${e?.message||e}`)}finally{input.disabled=false;input.value=''}
+    $(target).value=url;
+    if(S.edit?.type==='portal'){S.edit.data.image=url;S.edit.data.coverImage=url;}
+    toast('封面圖片已上傳，請按儲存 Portal');
+  }catch(e){console.error(e);toast(`圖片上傳失敗：${e?.message||e}`)}
 }
 async function handleBulkPortalFiles(input){
   const files=[...(input.files||[])];if(files.length!==6)return toast('請一次選擇剛好 6 張圖片');toast('正在上傳六張封面…');
@@ -659,26 +589,8 @@ function snapshotPortalForm(){
     visible:get('#portalVisible','true')==='true'
   };
 }
-async function handleInnerPortalFiles(input){
-  const file=input.files?.[0];if(!file)return;
-  const current=[...portalDraftImages(S.edit?.data||{})].filter(Boolean);
-  if(current.length>=6){toast('內頁圖片最多 6 張，請先刪除一張再新增');input.value='';return;}
-  const form=snapshotPortalForm();input.disabled=true;
-  try{
-    toast(`正在上傳第 ${current.length+1} 張內頁圖片…`);
-    const url=await uploadCompressedImageFile(file,'portal-images/content',1600,700000);
-    const merged=[...current,url].slice(0,6);
-    if(S.edit?.type==='portal'){
-      S.edit.data={...S.edit.data,...form,contentImages:merged};
-      await updateDoc(doc(db,'portals',S.edit.id),{contentImages:merged,updatedAt:serverTimestamp()});
-      toast(`第 ${merged.length} 張圖片已上傳並儲存`);
-    }else{
-      S.portalDraftImages=merged;S.portalDraftForm={...(S.portalDraftForm||{}),...form};
-      toast(`第 ${merged.length} 張圖片已上傳；請先儲存 Portal 基本資料`);
-    }
-    render();
-  }catch(e){console.error('handleInnerPortalFiles failed',e);toast(`內頁圖片上傳失敗：${e?.code||''} ${e?.message||e}`)}finally{input.disabled=false;input.value=''}
-}
+async function handlePortalImageSlot(input,slot){const file=input.files?.[0];if(!file)return;const form=snapshotPortalForm();input.disabled=true;try{toast(`正在上傳 Portal 第 ${slot+1} 張圖片…`);const url=await uploadImageFileDirect(file,'portal-images/content',1600,700000);const imgs=[...portalDraftImages(S.edit?.data||{})];while(imgs.length<6)imgs.push('');imgs[slot]=url;if(S.edit?.type==='portal'&&S.edit.id){await updateDoc(doc(db,'portals',S.edit.id),{...form,contentImages:imgs,updatedAt:serverTimestamp()});S.edit.data={...S.edit.data,...form,contentImages:imgs}}else{S.portalDraftImages=imgs;S.portalDraftForm={...(S.portalDraftForm||{}),...form}}render();toast(`Portal 第 ${slot+1} 張圖片已上傳並自動儲存`)}catch(e){console.error(e);toast(`圖片上傳失敗：${e?.code||''} ${e?.message||e}`)}finally{input.disabled=false;input.value=''}}
+async function removePortalImageSlot(slot){const form=snapshotPortalForm();const imgs=[...portalDraftImages(S.edit?.data||{})];while(imgs.length<6)imgs.push('');imgs[slot]='';if(S.edit?.type==='portal'&&S.edit.id){await updateDoc(doc(db,'portals',S.edit.id),{contentImages:imgs,updatedAt:serverTimestamp()});S.edit.data={...S.edit.data,...form,contentImages:imgs}}else{S.portalDraftImages=imgs;S.portalDraftForm={...(S.portalDraftForm||{}),...form}}render();toast(`已移除 Portal 第 ${slot+1} 張圖片`) }
 
 async function handlePortalPdfFile(input){
   const file=input.files?.[0];
@@ -708,7 +620,8 @@ function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{
  $('#saveSettings')&&($('#saveSettings').onclick=saveSettings); $('#saveAnn')&&($('#saveAnn').onclick=saveAnn); $('#newAnn')&&($('#newAnn').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-ann]').forEach(b=>b.onclick=()=>{const d=S.announcements.find(x=>x.id===b.dataset.loadAnn);S.edit={type:'ann',id:b.dataset.loadAnn,data:d};render()}); document.querySelectorAll('[data-del-ann]').forEach(b=>b.onclick=async()=>{if(confirm('刪除公告？')){await deleteDoc(doc(db,'announcements',b.dataset.delAnn));toast('已刪除')}});
  $('#saveTeam')&&($('#saveTeam').onclick=saveTeam); $('#newTeam')&&($('#newTeam').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-team]').forEach(b=>b.onclick=()=>{const d=S.teams.find(x=>x.id===b.dataset.loadTeam);S.edit={type:'team',id:b.dataset.loadTeam,data:d};render()}); document.querySelectorAll('[data-del-team]').forEach(b=>b.onclick=async()=>{if(confirm('刪除隊伍？')){await deleteDoc(doc(db,'teams',b.dataset.delTeam));toast('已刪除')}});
  $('#saveMember')&&($('#saveMember').onclick=saveMember); $('#newMember')&&($('#newMember').onclick=()=>{S.edit=null;render()}); document.querySelectorAll('[data-load-member]').forEach(b=>b.onclick=()=>{const d=S.members.find(x=>x.id===b.dataset.loadMember);S.edit={type:'member',id:b.dataset.loadMember,data:d};render()}); document.querySelectorAll('[data-del-member]').forEach(b=>b.onclick=async()=>{if(confirm('刪除人員？')){await deleteDoc(doc(db,'members',b.dataset.delMember));toast('已刪除')}});
- $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.portalDraftImages=[];S.portalDraftForm=null;render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); $('#bulkPortalFiles')&&($('#bulkPortalFiles').onchange=e=>handleBulkPortalFiles(e.target)); $('#applyBulkPortal')&&($('#applyBulkPortal').onclick=applyBulkPortalImages); $('#portalInnerFiles')&&($('#portalInnerFiles').onchange=e=>handleInnerPortalFiles(e.target)); $('#portalPdfFile')&&($('#portalPdfFile').onchange=e=>handlePortalPdfFile(e.target)); document.querySelectorAll('[data-remove-inner]').forEach(b=>b.onclick=()=>{const arr=[...portalDraftImages(S.edit?.data||{})];arr.splice(Number(b.dataset.removeInner),1);if(S.edit?.type==='portal')S.edit.data.contentImages=arr;else S.portalDraftImages=arr;render()}); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;S.portalDraftImages=[];render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}}); $('#saveEntry')&&($('#saveEntry').onclick=savePortalEntry); $('#newEntry')&&($('#newEntry').onclick=()=>{S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;render()}); $('#entryCoverFile')&&($('#entryCoverFile').onchange=e=>handleEntryCover(e.target)); $('#entryInnerFiles')&&($('#entryInnerFiles').onchange=e=>handleEntryInner(e.target)); $('#entryPdfFile')&&($('#entryPdfFile').onchange=e=>handleEntryPdf(e.target)); document.querySelectorAll('[data-load-entry]').forEach(b=>b.onclick=()=>{const d=S.portalEntries.find(x=>x.id===b.dataset.loadEntry);S.entryEdit={id:d.id,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.entryDraftImages=[];S.entryDraftForm=null;render()}); document.querySelectorAll('[data-del-entry]').forEach(b=>b.onclick=async()=>{if(confirm('刪除此篇專區內容？')){await deleteDoc(doc(db,'portal_entries',b.dataset.delEntry));S.entryEdit=null;toast('已刪除')}}); document.querySelectorAll('[data-remove-entry-image]').forEach(b=>b.onclick=()=>{const arr=[...entryDraftImages(S.entryEdit?.data||{})];arr.splice(Number(b.dataset.removeEntryImage),1);if(S.entryEdit)S.entryEdit.data.contentImages=arr;else S.entryDraftImages=arr;render()});
+ $('#savePortal')&&($('#savePortal').onclick=savePortal); $('#newPortal')&&($('#newPortal').onclick=()=>{S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.portalDraftImages=[];S.portalDraftForm=null;render()}); $('#portalImageFile')&&($('#portalImageFile').onchange=e=>fileToData(e.target,'#portalImage')); $('#bulkPortalFiles')&&($('#bulkPortalFiles').onchange=e=>handleBulkPortalFiles(e.target)); $('#applyBulkPortal')&&($('#applyBulkPortal').onclick=applyBulkPortalImages); $('#portalPdfFile')&&($('#portalPdfFile').onchange=e=>handlePortalPdfFile(e.target)); document.querySelectorAll('[data-load-portal]').forEach(b=>b.onclick=()=>{const d=S.portals.find(x=>x.id===b.dataset.loadPortal);S.edit={type:'portal',id:b.dataset.loadPortal,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;S.portalDraftImages=[];render()}); document.querySelectorAll('[data-del-portal]').forEach(b=>b.onclick=async()=>{if(confirm('刪除 Portal？')){await deleteDoc(doc(db,'portals',b.dataset.delPortal));toast('已刪除')}}); $('#saveEntry')&&($('#saveEntry').onclick=savePortalEntry); $('#newEntry')&&($('#newEntry').onclick=()=>{S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;render()}); $('#entryCoverFile')&&($('#entryCoverFile').onchange=e=>handleEntryCover(e.target)); $('#entryPdfFile')&&($('#entryPdfFile').onchange=e=>handleEntryPdf(e.target)); document.querySelectorAll('[data-load-entry]').forEach(b=>b.onclick=()=>{const d=S.portalEntries.find(x=>x.id===b.dataset.loadEntry);S.entryEdit={id:d.id,data:{...d,contentImages:Array.isArray(d.contentImages)?[...d.contentImages]:[]}};S.entryDraftImages=[];S.entryDraftForm=null;render()}); document.querySelectorAll('[data-del-entry]').forEach(b=>b.onclick=async()=>{if(confirm('刪除此篇專區內容？')){await deleteDoc(doc(db,'portal_entries',b.dataset.delEntry));S.entryEdit=null;toast('已刪除')}});
+ document.querySelectorAll('[data-entry-image-slot]').forEach(i=>i.onchange=()=>handleEntryImageSlot(i,Number(i.dataset.entryImageSlot))); document.querySelectorAll('[data-remove-entry-slot]').forEach(b=>b.onclick=()=>removeEntryImageSlot(Number(b.dataset.removeEntrySlot))); document.querySelectorAll('[data-portal-image-slot]').forEach(i=>i.onchange=()=>handlePortalImageSlot(i,Number(i.dataset.portalImageSlot))); document.querySelectorAll('[data-remove-portal-slot]').forEach(b=>b.onclick=()=>removePortalImageSlot(Number(b.dataset.removePortalSlot)));
  document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeSet)); $('#importLegacy')&&($('#importLegacy').onclick=()=>importLegacyTeams(true));
 }
 const closeQuickModal=()=>$('#quickModal').classList.remove('show'); $('#fab').onclick=()=>$('#quickModal').classList.add('show'); $('#closeQuick').onclick=closeQuickModal; $('#quickModal').addEventListener('click',e=>{if(e.target.id==='quickModal')closeQuickModal()}); document.querySelectorAll('#quickModal [data-go]').forEach(b=>b.onclick=()=>{closeQuickModal();S.scoreMode=b.dataset.scoremode;setTimeout(()=>go('score'),180)});
