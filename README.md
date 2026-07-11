@@ -1,10 +1,12 @@
-# AMR Platform 1.0 完整重整版
+# AMR Platform 1.0 Portal 圖片六格統一修正版
 
-- Portal 內頁與每篇專區內容均改為 6 個固定圖片位置。
-- 每個位置一次只選 1 張。
-- 先輸入內容標題，再上傳圖片。
-- 每張上傳成功後立即寫入 Firebase Storage 與 Firestore。
-- 可單獨移除或更換第 1～6 張。
-- 人超盃為純個人分數，不選隊伍。
-- 人超盃可新增、修改、刪除、復原，並可勾選「已達成」。
-- 已移除統一達成門檻 100 分及相關顯示。
+本版將 Portal 本身與「專區內容」的 1～6 張圖片改成完全相同的儲存方式。
+
+- 每張圖片獨立存為 contentImage1～contentImage6
+- 同時保留 contentImages 陣列，相容舊資料
+- 上傳後重新讀取 Firebase 驗證
+- 成功後立刻出現縮圖與移除按鈕
+- 所有 Portal 都使用相同流程
+- 舊 Base64 封面及既有圖片仍可讀取
+
+更新方式：將 index.html 覆蓋 GitHub 專案根目錄原檔並 Commit。
