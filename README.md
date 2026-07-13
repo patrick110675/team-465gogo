@@ -1,9 +1,8 @@
-AMR Platform 1.0｜Firestore 免費圖片版 v2
+AMR Platform 1.0 更新版
 
-更新方式：
-1. 解壓縮 ZIP。
-2. 將 index.html 覆蓋 GitHub 專案根目錄原檔。
-3. Commit changes。
-4. 等待 GitHub Pages 更新後，以無痕視窗重新開啟。
-
-本版 Portal 內頁圖片不使用 Firebase Storage；每張圖片壓縮後獨立存入 Firestore 的 portal_images 集合。
+1. Portal 顯示名稱改為「人力資訊」
+2. 首頁顯示當週團隊 TOP5 與個人 TOP5
+3. 歷史紀錄依週顯示團隊/個人前五名
+4. 新增積分可手動調整正負分與備註
+5. 首頁主視覺資訊只在首頁顯示
+6. 保留 Firestore 免費圖片版 v2 的 Portal 圖片功能
