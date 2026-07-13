@@ -30,7 +30,7 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gsta
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
-const AMR_BUILD = '1.0-complete-20260713-score-nav-no-qr-direct-count-v2';
+const AMR_BUILD = '1.0-complete-20260713-attendance-date-status-v1';
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
   authDomain: "team-465.firebaseapp.com",
@@ -115,7 +115,7 @@ function currentWeekNumber(){
   const no=Math.floor(diff/7)+1;
   return Math.min(weeks.length,Math.max(1,no));
 }
-let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],portalEntries:[],scores:[],events:[],attendance:[],checkins:[],humanSuperCup:[],portalImages:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,selectedPortalEntry:null,edit:null,entryEdit:null,entryDraftImages:[],entryDraftForm:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:null,scoreWeekManual:false,ruleMode:'personal',ruleEdit:null,hscEdit:null};
+let S = {settings:{...defaultSettings},teams:[],members:[],announcements:[],portals:[],portalEntries:[],scores:[],events:[],attendance:[],checkins:[],humanSuperCup:[],portalImages:[],importReport:'',page:'home',scoreMode:'personal',adminTab:'settings',rankTab:'score',sharedTeam:'',sharedMember:'',selectedPortal:null,selectedPortalEntry:null,edit:null,entryEdit:null,entryDraftImages:[],entryDraftForm:null,counts:{},bulkPortalImages:[],portalDraftImages:[],scoreWeek:null,scoreWeekManual:false,ruleMode:'personal',ruleEdit:null,hscEdit:null,attendanceDate:new Date().toISOString().slice(0,10),attendanceTeam:'',attendanceMember:'',attendanceStatus:'出席'};
 function col(name){return collection(db,name)}
 function listen(name,key){onSnapshot(col(name),snap=>{S[key]=snap.docs.map(d=>({id:d.id,...d.data()})); render();},()=>{})}
 let settingsWriteDepth=0;
@@ -255,12 +255,72 @@ function rankContent(){
     const arr=(S.humanSuperCup||[]).filter(x=>!x.deleted).sort((a,b)=>Number(b.score||0)-Number(a.score||0));
     return `<h2>🏅 人超盃個人分數</h2>${arr.map((x,i)=>`<div class="rankItem"><div class="medal">${i<3?['🥇','🥈','🥉'][i]:i+1}</div><b>${esc(x.memberName||'未命名')}</b><span>${Number(x.score||0)} 分${x.achieved?'｜✅ 已達成':''}</span></div>`).join('')||'<div class="empty">尚無人超盃分數</div>'}<h2>🎯 達成人員</h2>${arr.filter(x=>x.achieved===true).map(x=>`<span class="pill" style="margin:4px">✅ ${esc(x.memberName)}</span>`).join('')||'<div class="empty">尚無標記達成人員</div>'}`;
   }
-  if(S.rankTab==='att'){
-    return `<h2>📅 例會出席</h2>${S.attendance.length?S.attendance.map(a=>`<div class="listItem"><div class="grow"><b>${esc(a.memberName||a.name)}</b><p>${esc(a.status||'出席')}｜${fmtDate(a.createdAt)}</p></div></div>`).join(''):'<div class="empty">尚無例會紀錄</div>'}`;
-  }
+  if(S.rankTab==='att') return attendancePanel();
   const rows=S.scores.filter(x=>!x.deleted).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
   return `<h2>🗓️ 每週排行榜</h2>${weeklyRankHistory()}<h2 style="margin-top:20px">📜 積分歷史紀錄</h2>${rows.length?`<table class="table"><thead><tr><th>日期</th><th>類型</th><th>對象</th><th>分數</th><th>操作</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${fmtDate(r.createdAt)}</td><td>${r.mode==='team'?'團隊':'個人'}</td><td>${esc(r.mode==='team'?(r.teamName+(r.memberName?'｜'+r.memberName:'')):r.memberName)}</td><td>${r.total}</td><td><button class="btn small secondary" data-edit-score="${r.id}">修改</button> <button class="btn small danger" data-del-score="${r.id}">刪除</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty">尚無歷史紀錄</div>'}`;
 }
+
+function attendancePanel(){
+  const selectedDate=S.attendanceDate||new Date().toISOString().slice(0,10);
+  const teams=S.teams.slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'zh-Hant'));
+  const members=S.members.filter(m=>!S.attendanceTeam||m.teamId===S.attendanceTeam||m.teamName===teamName(S.attendanceTeam))
+    .slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'zh-Hant'));
+  const records=S.attendance.filter(a=>(a.date||'')===selectedDate).sort((a,b)=>String(a.memberName||'').localeCompare(String(b.memberName||''),'zh-Hant'));
+  const countStatus=status=>records.filter(r=>(r.status||'出席')===status).length;
+  const present=countStatus('出席')+countStatus('遲到');
+  const total=records.length;
+  const rate=total?Math.round((present/total)*100):0;
+
+  const memberRates=S.members.map(m=>{
+    const rows=S.attendance.filter(a=>a.memberId===m.id);
+    const attended=rows.filter(a=>['出席','遲到'].includes(a.status||'出席')).length;
+    return {name:m.name,team:m.teamName||teamName(m.teamId),total:rows.length,attended,rate:rows.length?Math.round(attended/rows.length*100):0};
+  }).filter(x=>x.total).sort((a,b)=>b.rate-a.rate||b.total-a.total);
+
+  return `<h2>📅 例會出席率</h2>
+  <div class="split">
+    <div>
+      <label>例會日期</label><input id="attendanceDate" type="date" value="${esc(selectedDate)}">
+      <label>隊伍</label><select id="attendanceTeam"><option value="">全部隊伍</option>${teams.map(t=>`<option value="${t.id}" ${S.attendanceTeam===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+      <label>姓名</label><select id="attendanceMember"><option value="">請選擇姓名</option>${members.map(m=>`<option value="${m.id}" ${S.attendanceMember===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
+      <label>出缺席狀況</label><select id="attendanceStatus">
+        ${['出席','遲到','請假','缺席'].map(s=>`<option value="${s}" ${S.attendanceStatus===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <label>備註</label><input id="attendanceNote" placeholder="例如：事假、病假、遲到 10 分鐘">
+      <button class="btn full" id="saveAttendance" type="button">儲存出缺席紀錄</button>
+    </div>
+    <div>
+      <div class="notice"><b>${esc(selectedDate)} 出席統計</b><br>
+      出席 ${countStatus('出席')} 人｜遲到 ${countStatus('遲到')} 人｜請假 ${countStatus('請假')} 人｜缺席 ${countStatus('缺席')} 人<br>
+      本日出席率：${rate}%</div>
+      <div style="margin-top:12px">${records.length?records.map(r=>`<div class="listItem"><div class="grow"><b>${esc(r.memberName||'未命名')}</b><p>${esc(r.teamName||'')}｜${esc(r.status||'出席')}${r.note?'｜'+esc(r.note):''}</p></div><button class="btn small danger" data-del-att="${r.id}">刪除</button></div>`).join(''):'<div class="empty">這一天尚無紀錄</div>'}</div>
+    </div>
+  </div>
+  <h2 style="margin-top:20px">📊 個人累計出席率</h2>
+  ${memberRates.length?memberRates.map(x=>`<div class="rankItem"><div class="grow"><b>${esc(x.name)}</b><small>${esc(x.team||'')}｜出席 ${x.attended}/${x.total}</small></div><span>${x.rate}%</span></div>`).join(''):'<div class="empty">尚無出席率資料</div>'}`;
+}
+
+async function saveAttendance(){
+  const date=$('#attendanceDate')?.value||'';
+  const memberId=$('#attendanceMember')?.value||'';
+  const status=$('#attendanceStatus')?.value||'出席';
+  const note=$('#attendanceNote')?.value||'';
+  const member=S.members.find(m=>m.id===memberId);
+  if(!date)return toast('請選擇日期');
+  if(!member)return toast('請選擇姓名');
+  try{
+    const same=S.attendance.find(a=>a.date===date&&a.memberId===memberId);
+    const data={date,memberId,memberName:member.name,teamId:member.teamId||'',teamName:member.teamName||teamName(member.teamId),status,note,source:'手動登記'};
+    await saveCollectionRecord('attendance',same?.id||null,data);
+    S.attendanceDate=date;S.attendanceMember=memberId;S.attendanceStatus=status;
+    toast(same?'出缺席紀錄已更新':'出缺席紀錄已儲存');
+  }catch(e){console.error(e);toast(`出席紀錄儲存失敗：${e?.message||e}`)}
+}
+async function deleteAttendance(id){
+  if(!confirm('確認刪除這筆出缺席紀錄？'))return;
+  try{await deleteDoc(doc(db,'attendance',id));toast('出缺席紀錄已刪除')}catch(e){toast(`刪除失敗：${e?.message||e}`)}
+}
+
 async function editScore(id){const r=S.scores.find(x=>x.id===id); if(!r)return; const val=prompt('請輸入更正後分數',r.total); if(val===null)return; const note=prompt('備註原因','更正分數')||''; await updateDoc(doc(db,'score_history',id),{total:Number(val),note,updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||'anonymous'}); toast('已修改')}
 async function delScore(id){if(!confirm('確認刪除此筆積分紀錄？'))return; await updateDoc(doc(db,'score_history',id),{deleted:true,updatedAt:serverTimestamp(),updatedBy:currentUser?.uid||'anonymous'}); toast('已刪除')}
 
@@ -618,7 +678,7 @@ async function handlePortalPdfFile(input){
   }catch(e){console.error(e);toast('PDF 上傳失敗，請確認 Firebase Storage 規則');}
 }
 function render(){nav(); const check=new URLSearchParams(location.search).get('checkin'); if(check){app.innerHTML=checkinPage(check); bind(); return;} if(S.page==='home') app.innerHTML=home(); if(S.page==='score') app.innerHTML=scorePage(); if(S.page==='qr') app.innerHTML=qr(); if(S.page==='ranking') app.innerHTML=ranking(); if(S.page==='portal') app.innerHTML=portal(); if(S.page==='admin') app.innerHTML=admin(); bind();}
-function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;S.hscEdit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule))); document.querySelectorAll('[data-restore-rule]').forEach(b=>b.onclick=()=>restoreScoreRule(Number(b.dataset.restoreRule)));
+function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{e.preventDefault(); if(b.dataset.scoremode)S.scoreMode=b.dataset.scoremode; go(b.dataset.go)}); document.querySelectorAll('[data-scoretab]').forEach(b=>b.onclick=()=>{S.scoreMode=b.dataset.scoretab;render()}); document.querySelectorAll('[data-ranktab]').forEach(b=>b.onclick=()=>{S.rankTab=b.dataset.ranktab;render()}); $('#attendanceDate')&&($('#attendanceDate').onchange=e=>{S.attendanceDate=e.target.value;render()}); $('#attendanceTeam')&&($('#attendanceTeam').onchange=e=>{S.attendanceTeam=e.target.value;S.attendanceMember='';render()}); $('#attendanceMember')&&($('#attendanceMember').onchange=e=>{S.attendanceMember=e.target.value}); $('#attendanceStatus')&&($('#attendanceStatus').onchange=e=>{S.attendanceStatus=e.target.value}); $('#saveAttendance')&&($('#saveAttendance').onclick=saveAttendance); document.querySelectorAll('[data-del-att]').forEach(b=>b.onclick=()=>deleteAttendance(b.dataset.delAtt)); document.querySelectorAll('[data-admintab]').forEach(b=>b.onclick=()=>{S.adminTab=b.dataset.admintab;S.edit=null;S.entryEdit=null;S.entryDraftImages=[];S.entryDraftForm=null;S.hscEdit=null;render()}); document.querySelectorAll('[data-rulemode]').forEach(b=>b.onclick=()=>{S.ruleMode=b.dataset.rulemode;S.ruleEdit=null;render()}); document.querySelectorAll('[data-edit-rule]').forEach(b=>b.onclick=()=>{const r=activeScoreRules()[S.ruleMode][Number(b.dataset.editRule)];S.ruleEdit={index:Number(b.dataset.editRule),key:r[0],label:r[1],points:r[2]};render()}); document.querySelectorAll('[data-del-rule]').forEach(b=>b.onclick=()=>deleteScoreRule(Number(b.dataset.delRule))); document.querySelectorAll('[data-restore-rule]').forEach(b=>b.onclick=()=>restoreScoreRule(Number(b.dataset.restoreRule)));
  $('#manualWeekToggle')&&($('#manualWeekToggle').onchange=e=>{S.scoreWeekManual=e.target.checked;S.scoreWeek=S.scoreWeekManual?(S.scoreWeek||currentWeekNumber()):currentWeekNumber();render()}); $('#scoreWeek')&&($('#scoreWeek').onchange=e=>{S.scoreWeekManual=true;S.scoreWeek=Number(e.target.value||currentWeekNumber())}); $('#scoreTeam')&&($('#scoreTeam').onchange=e=>{S.sharedTeam=e.target.value;S.sharedMember='';render()}); $('#scoreMember')&&($('#scoreMember').onchange=e=>{S.sharedMember=e.target.value}); document.querySelectorAll('[data-count]').forEach(b=>b.onclick=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=b.dataset.count;S.counts[mode][k]=Math.max(0,Math.floor(Number(S.counts[mode][k]||0)+Number(b.dataset.delta)));render()}); document.querySelectorAll('[data-count-input]').forEach(i=>{i.oninput=()=>{const mode=S.scoreMode;S.counts[mode]=S.counts[mode]||{};const k=i.dataset.countInput;const v=Math.max(0,Math.floor(Number(i.value||0)));S.counts[mode][k]=v;i.value=String(v);const total=activeScoreRules()[mode].reduce((sum,[key,,pts])=>sum+(Number(S.counts[mode][key]||0)*Number(pts||0)),0);const totalEl=document.querySelector('.scoreTotal');if(totalEl)totalEl.textContent=`本次得分 ${total} 分`;};i.onchange=i.oninput;}); $('#saveScore')&&($('#saveScore').onclick=saveScore); $('#saveRule')&&($('#saveRule').onclick=saveScoreRule); $('#newRule')&&($('#newRule').onclick=()=>{S.ruleEdit=null;render()}); $('#saveWeekSettings')&&($('#saveWeekSettings').onclick=saveWeekSettings); $('#saveHsc')&&($('#saveHsc').onclick=saveHsc); $('#newHsc')&&($('#newHsc').onclick=()=>{S.hscEdit=null;render()}); document.querySelectorAll('[data-load-hsc]').forEach(b=>b.onclick=()=>{const d=S.humanSuperCup.find(x=>x.id===b.dataset.loadHsc);S.hscEdit={id:d.id,data:{...d}};render()}); document.querySelectorAll('[data-del-hsc]').forEach(b=>b.onclick=()=>deleteHsc(b.dataset.delHsc)); document.querySelectorAll('[data-restore-hsc]').forEach(b=>b.onclick=()=>restoreHsc(b.dataset.restoreHsc));
  document.querySelectorAll('[data-edit-score]').forEach(b=>b.onclick=()=>editScore(b.dataset.editScore)); document.querySelectorAll('[data-del-score]').forEach(b=>b.onclick=()=>delScore(b.dataset.delScore));
  $('#createEvent')&&($('#createEvent').onclick=createEvent); document.querySelectorAll('[data-del-event]').forEach(b=>b.onclick=async()=>{if(confirm('刪除活動？')){await deleteDoc(doc(db,'events',b.dataset.delEvent));toast('已刪除')}});
