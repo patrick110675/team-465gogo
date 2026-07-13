@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="amr-build" content="2026-07-11-save-audit-v1"><title>AMR Platform 1.0｜積分規則自動週數修正版</title>
+  <meta name="amr-build" content="2026-07-13-nav-score-no-qr-v1"><title>AMR Platform 1.0｜積分規則自動週數修正版</title>
   <meta name="theme-color" content="#dff1ff" />
   <style>
     :root{--bg:#eaf6ff;--bg2:#d8efff;--card:#ffffff;--card2:#f4fbff;--text:#123049;--muted:#68849a;--primary:#2f80ed;--primary2:#76bfff;--accent:#f6c453;--danger:#ef4444;--ok:#16a34a;--line:#cfe8fb;--shadow:0 14px 35px rgba(31,99,151,.16);--radius:24px;--font:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;--titleSize:32px;--bodySize:16px}
@@ -23,16 +23,14 @@
 <body data-theme="sky">
 <div class="toast" id="toast"></div>
 <div class="app" id="app"></div>
-<button class="fab" id="fab" type="button">＋</button>
 <nav class="bottomNav" id="nav"></nav>
-<div class="modal" id="quickModal"><div class="sheet"><h2>新增積分</h2><button class="btn full" data-go="score" data-scoremode="personal" type="button">👤 個人積分</button><br><br><button class="btn secondary full" data-go="score" data-scoremode="team" type="button">👥 團隊積分</button><br><button class="btn ghost full" id="closeQuick" type="button">取消</button></div></div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, getDocs, getDoc, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
 
-const AMR_BUILD = '1.0-complete-20260713-direct-count-input-v1';
+const AMR_BUILD = '1.0-complete-20260713-score-nav-no-qr-direct-count-v2';
 const firebaseConfig = {
   apiKey: "AIzaSyCCBe5b_3jMHYSnwQwQr4r7uNdzm61PWBY",
   authDomain: "team-465.firebaseapp.com",
@@ -202,7 +200,7 @@ async function autoImportLegacy(){
 setTimeout(autoImportLegacy,1800);
 function applyTheme(){const th=S.settings.theme||'sky';document.body.dataset.theme=th==='custom'?'sky':th;document.documentElement.style.setProperty('--titleSize',(S.settings.titleSize||32)+'px');document.documentElement.style.setProperty('--bodySize',(S.settings.bodySize||16)+'px');}
 
-function nav(){const items=[['home','🏠','首頁'],['qr','📱','QR'],['ranking','🏆','排行榜'],['portal','⭐','人力資訊'],['admin','⚙️','管理']];$('#nav').innerHTML=items.map(([id,ic,tx])=>`<button type="button" class="navBtn ${S.page===id?'active':''}" data-go="${id}"><i>${ic}</i>${tx}</button>`).join('')}
+function nav(){const items=[['home','🏠','首頁'],['score','📝','登記分數'],['ranking','🏆','排行榜'],['portal','⭐','人力資訊'],['admin','⚙️','管理']];$('#nav').innerHTML=items.map(([id,ic,tx])=>`<button type="button" class="navBtn ${S.page===id?'active':''}" data-go="${id}"><i>${ic}</i>${tx}</button>`).join('')}
 function go(page){S.page=page;S.selectedPortal=null;S.selectedPortalEntry=null; render(); window.scrollTo({top:0,behavior:'smooth'})}
 function scoresBy(){let personal={},team={}; for(const r of S.scores){if(r.deleted) continue; const n=Number(r.total||0); if(r.mode==='personal'){if(r.memberName) personal[r.memberName]=(personal[r.memberName]||0)+n;} else if(r.mode==='team'){if(r.teamName) team[r.teamName]=(team[r.teamName]||0)+n;}} return {personal,team}}
 function scoreRecordWeekNo(r){if(Number(r?.weekNo)>0)return Number(r.weekNo);try{const d=r?.createdAt?.toDate?r.createdAt.toDate():r?.createdAt?new Date(r.createdAt):null;if(!d)return 0;const base=new Date((S.settings.baseStart||'2026-07-06')+'T00:00:00');const day=new Date(d.getFullYear(),d.getMonth(),d.getDate());return Math.max(1,Math.floor((day-base)/(7*24*60*60*1000))+1)}catch{return 0}}
@@ -633,7 +631,6 @@ function bind(){document.querySelectorAll('[data-go]').forEach(b=>b.onclick=e=>{
  document.querySelectorAll('[data-entry-image-slot]').forEach(i=>i.onchange=()=>handleEntryImageSlot(i,Number(i.dataset.entryImageSlot))); document.querySelectorAll('[data-remove-entry-slot]').forEach(b=>b.onclick=()=>removeEntryImageSlot(Number(b.dataset.removeEntrySlot))); document.querySelectorAll('[data-portal-image-slot]').forEach(i=>i.onchange=()=>handlePortalImageSlot(i,Number(i.dataset.portalImageSlot))); document.querySelectorAll('[data-remove-portal-slot]').forEach(b=>b.onclick=()=>removePortalImageSlot(Number(b.dataset.removePortalSlot)));
  document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>setTheme(b.dataset.themeSet)); $('#importLegacy')&&($('#importLegacy').onclick=()=>importLegacyTeams(true));
 }
-const closeQuickModal=()=>$('#quickModal').classList.remove('show'); $('#fab').onclick=()=>$('#quickModal').classList.add('show'); $('#closeQuick').onclick=closeQuickModal; $('#quickModal').addEventListener('click',e=>{if(e.target.id==='quickModal')closeQuickModal()}); document.querySelectorAll('#quickModal [data-go]').forEach(b=>b.onclick=()=>{closeQuickModal();S.scoreMode=b.dataset.scoremode;setTimeout(()=>go('score'),180)});
 render();
 </script>
 </body>
